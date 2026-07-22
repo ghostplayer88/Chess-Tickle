@@ -32,12 +32,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.activity.compose.BackHandler
 import com.example.chessapp.domain.*
 
 @Composable
 fun ChessAppScreen(viewModel: ChessViewModel = viewModel()) {
     val currentScreen by viewModel.currentScreen.collectAsState()
     val unlockedToast by viewModel.unlockedToast.collectAsState()
+
+    BackHandler(enabled = currentScreen != AppScreen.MENU) {
+        viewModel.backToMenu()
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         when (currentScreen) {
