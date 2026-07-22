@@ -504,8 +504,13 @@ fun TutorialScreen(viewModel: ChessViewModel) {
                 )
 
                 TutorialCard(
-                    title = "🎮 Controls & AI Modes",
-                    content = "• Color Selection: Choose White or Black. Your chosen color always defaults to the bottom of the screen!\n• AI Difficulty: Challenge Easy, Medium, or Hard AI.\n• AI Thinking Delay: 1-second delay makes AI moves feel natural."
+                    title = "↩️ Undo & 💡 Hints",
+                    content = "• ↩️ Undo Move: Reverts your last move. When playing against the AI, it automatically rolls back both your turn and the AI's turn so you get control back instantly!\n• 💡 AI Hint System: Tap the Hint button during any match to calculate and highlight the top recommended move in glowing cyan on the board."
+                )
+
+                TutorialCard(
+                    title = "🎨 Custom Themes & Controls",
+                    content = "• 🎨 Board Themes: Select your favorite board aesthetic in Game Setup (Classic Wood, Emerald, or Cyberpunk Neon).\n• ♔/♚ Color Alignment: Select White or Black. Your chosen color always defaults to the bottom of the screen!\n• ⚡ AI Difficulty: Choose between Easy, Medium, or Hard AI engines."
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
