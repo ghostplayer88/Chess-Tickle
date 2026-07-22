@@ -348,6 +348,14 @@ fun GameScreen(viewModel: ChessViewModel) {
                             color = Color(0xFFFFD700)
                         )
                         Text(
+                            text = activeCampaignLevel!!.lessonTip,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFFFFE082),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(vertical = 2.dp)
+                        )
+                        Text(
                             text = "Goals: ${activeCampaignLevel!!.goal1} | ${activeCampaignLevel!!.goal2} | ${activeCampaignLevel!!.goal3}",
                             fontSize = 11.sp,
                             color = Color.White,
@@ -705,6 +713,13 @@ fun CampaignScreen(viewModel: ChessViewModel) {
                                     fontSize = 13.sp,
                                     color = Color.LightGray,
                                     modifier = Modifier.padding(top = 2.dp)
+                                )
+                                Text(
+                                    text = lvl.lessonTip,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFFFFE082),
+                                    modifier = Modifier.padding(top = 4.dp)
                                 )
                                 Text(
                                     text = "Goals: ${lvl.goal1} | ${lvl.goal2} | ${lvl.goal3}",
