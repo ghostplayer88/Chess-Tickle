@@ -73,6 +73,9 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
     private val _hintMove = MutableStateFlow<Move?>(null)
     val hintMove: StateFlow<Move?> = _hintMove.asStateFlow()
 
+    private val _moveCount = MutableStateFlow(0)
+    val moveCount: StateFlow<Int> = _moveCount.asStateFlow()
+
     fun setBoardTheme(theme: BoardTheme) {
         _boardTheme.value = theme
         triggerAchievement("change_theme")
@@ -240,6 +243,7 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
         _board.value = game.board.value
         _currentTurn.value = game.currentTurn.value
         _status.value = game.status.value
+        _moveCount.value = game.moves.size
 
         when (val currentStatus = _status.value) {
             is GameStatus.Checkmate -> {

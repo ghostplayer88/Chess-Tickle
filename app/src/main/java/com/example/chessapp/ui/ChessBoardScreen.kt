@@ -289,6 +289,7 @@ fun GameScreen(viewModel: ChessViewModel) {
     val boardTheme by viewModel.boardTheme.collectAsState()
     val activeCampaignLevel by viewModel.activeCampaignLevel.collectAsState()
     val hintMove by viewModel.hintMove.collectAsState()
+    val moveCount by viewModel.moveCount.collectAsState()
     
     val userColor = if (gameMode == GameMode.PVAI) aiColor.opposite() else PieceColor.WHITE
 
@@ -337,8 +338,8 @@ fun GameScreen(viewModel: ChessViewModel) {
                     verticalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        text = "Turn: ${if (currentTurn == PieceColor.WHITE) "White" else "Black"}",
-                        fontSize = 18.sp,
+                        text = "Turn: ${if (currentTurn == PieceColor.WHITE) "White" else "Black"} | Moves: $moveCount",
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.Black,
                         color = Color(0xFFFFD700),
                         modifier = Modifier.padding(bottom = 8.dp)
@@ -438,8 +439,8 @@ fun GameScreen(viewModel: ChessViewModel) {
                         fontSize = 14.sp
                     )
                     Text(
-                        text = "Turn: ${if (currentTurn == PieceColor.WHITE) "White" else "Black"}",
-                        fontSize = 18.sp,
+                        text = "Turn: ${if (currentTurn == PieceColor.WHITE) "White" else "Black"} | Moves: $moveCount",
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.Black,
                         color = Color(0xFFFFD700)
                     )
