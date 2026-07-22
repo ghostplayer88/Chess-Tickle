@@ -1,25 +1,48 @@
 package com.example.chessapp.domain
 
+import com.example.chessapp.ui.AiDifficulty
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.random.Random
 
 class ChessAI {
 
-    suspend fun getBestMove(game: ChessGame, depth: Int = 3): Move? = withContext(Dispatchers.Default) {
+    suspend fun getBestMove(game: ChessGame, difficulty: AiDifficulty): Move? = withContext(Dispatchers.Default) {
         val color = game.currentTurn.value
+        val legalMoves = getAllLegalMoves(game, color)
+        if (legalMoves.isEmpty()) return@withContext null
+
+        val depth = difficulty.depth
+
+        // For beginner balance:
+        // Easy AI: 35% chance to play a random non-blundering move to simulate a beginner human player
+        if (difficulty == AiDifficulty.EASY && Random.nextFloat() < 0.35f) {
+            val nonBlunderMoves = legalMoves.filter { move ->
+                val nextGame = game.copy()
+                nextGame.makeMove(move)
+                val eval = evaluateBoard(nextGame)
+                if (color == PieceColor.WHITE) eval > -300 else eval < 300
+            }
+            if (nonBlunderMoves.isNotEmpty()) {
+                return@withContext nonBlunderMoves.random()
+            }
+            return@withContext legalMoves.random()
+        }
+
+        // Medium AI: 10% chance of picking from top 3 moves
         var bestMove: Move? = null
         var bestValue = if (color == PieceColor.WHITE) Int.MIN_VALUE else Int.MAX_VALUE
+        val scoredMoves = mutableListOf<Pair<Move, Int>>()
 
-        val legalMoves = getAllLegalMoves(game, color)
-        
         for (move in legalMoves) {
             val nextGame = game.copy()
             nextGame.makeMove(move)
             
             val value = minimax(nextGame, depth - 1, Int.MIN_VALUE, Int.MAX_VALUE, color.opposite())
-            
+            scoredMoves.add(Pair(move, value))
+
             if (color == PieceColor.WHITE) {
                 if (value > bestValue || bestMove == null) {
                     bestValue = value
@@ -31,6 +54,12 @@ class ChessAI {
                     bestMove = move
                 }
             }
+        }
+
+        if (difficulty == AiDifficulty.MEDIUM && Random.nextFloat() < 0.15f) {
+            val sorted = if (color == PieceColor.WHITE) scoredMoves.sortedByDescending { it.second } else scoredMoves.sortedBy { it.second }
+            val top3 = sorted.take(minOf(3, sorted.size))
+            return@withContext top3.random().first
         }
         
         return@withContext bestMove
@@ -85,7 +114,6 @@ class ChessAI {
                 }
             }
         }
-        // Basic move ordering: captures first to improve alpha-beta pruning
         return allMoves.sortedByDescending { it.capturedPiece != null }
     }
 
@@ -99,8 +127,14 @@ class ChessAI {
         }
 
         var score = 0
-        for ((_, piece) in game.board.value.pieces) {
-            val value = getPieceValue(piece.type)
+        for ((pos, piece) in game.board.value.pieces) {
+            var value = getPieceValue(piece.type)
+            
+            // Positional bonus: Center control (d4, d5, e4, e5)
+            if (pos.row in 3..4 && pos.col in 3..4) {
+                value += 3
+            }
+
             if (piece.color == PieceColor.WHITE) {
                 score += value
             } else {
@@ -117,7 +151,7 @@ class ChessAI {
             PieceType.BISHOP -> 30
             PieceType.ROOK -> 50
             PieceType.QUEEN -> 90
-            PieceType.KING -> 900 // High value so AI doesn't sacrifice it if it could (though rules prevent this, it's good practice)
+            PieceType.KING -> 900
         }
     }
 }

@@ -133,7 +133,7 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
         triggerAchievement("use_hint")
         soundManager.playMoveSound()
         viewModelScope.launch {
-            _hintMove.value = ai.getBestMove(game, depth = 3)
+            _hintMove.value = ai.getBestMove(game, AiDifficulty.HARD)
         }
     }
 
@@ -227,7 +227,7 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
             _isAiThinking.value = true
             viewModelScope.launch {
                 delay(1000)
-                val bestMove = ai.getBestMove(game, depth = _aiDifficulty.value.depth)
+                val bestMove = ai.getBestMove(game, _aiDifficulty.value)
                 if (bestMove != null) {
                     executeMove(bestMove)
                 }
