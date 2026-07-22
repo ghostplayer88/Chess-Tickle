@@ -70,20 +70,31 @@ fun MenuScreen(viewModel: ChessViewModel) {
             )
 
             CartoonButton(
-                text = "🎮 PLAY",
+                text = "🤖 VS AI (SINGLE PLAYER)",
                 onClick = { viewModel.goToModeSelection() },
-                modifier = Modifier.fillMaxWidth(0.7f),
+                modifier = Modifier.fillMaxWidth(0.85f),
                 backgroundColor = Color(0xFFFF9800),
                 shadowColor = Color(0xFFE65100),
-                fontSize = 24.sp
+                fontSize = 20.sp
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            CartoonButton(
+                text = "👥 VS PLAYER (LOCAL 2P)",
+                onClick = { viewModel.startGame(GameMode.PVP, PieceColor.BLACK, AiDifficulty.MEDIUM) },
+                modifier = Modifier.fillMaxWidth(0.85f),
+                backgroundColor = Color(0xFF4CAF50),
+                shadowColor = Color(0xFF2E7D32),
+                fontSize = 20.sp
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             CartoonButton(
                 text = "📖 RULES & TUTORIAL",
                 onClick = { viewModel.goToTutorial() },
-                modifier = Modifier.fillMaxWidth(0.7f),
+                modifier = Modifier.fillMaxWidth(0.85f),
                 backgroundColor = Color(0xFF0288D1),
                 shadowColor = Color(0xFF01579B),
                 fontSize = 18.sp
