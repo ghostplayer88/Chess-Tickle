@@ -32,6 +32,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import android.content.res.Configuration
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.activity.compose.BackHandler
 import com.example.chessapp.domain.*
 
@@ -290,6 +292,9 @@ fun GameScreen(viewModel: ChessViewModel) {
     
     val userColor = if (gameMode == GameMode.PVAI) aiColor.opposite() else PieceColor.WHITE
 
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
     Box(modifier = Modifier.fillMaxSize()) {
         Image(
             painter = painterResource(id = R.drawable.chess_bg),
@@ -299,124 +304,246 @@ fun GameScreen(viewModel: ChessViewModel) {
         )
         Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.15f)))
 
-        Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
+        if (isLandscape) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxSize().padding(12.dp),
+                horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                CartoonButton(
-                    text = "🛑 Quit",
-                    onClick = { viewModel.backToMenu() },
-                    backgroundColor = Color(0xFFE53935),
-                    shadowColor = Color(0xFFB71C1C),
-                    fontSize = 14.sp
-                )
-                Text(
-                    text = "Turn: ${if (currentTurn == PieceColor.WHITE) "White" else "Black"}",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Black,
-                    color = Color(0xFFFFD700)
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(
+                    modifier = Modifier.fillMaxHeight(0.95f).aspectRatio(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    ChessBoardView(
+                        modifier = Modifier.fillMaxSize(),
+                        board = board,
+                        selectedPosition = selectedPosition,
+                        legalMoves = legalMoves,
+                        hintMove = hintMove,
+                        boardTheme = boardTheme,
+                        userColor = userColor,
+                        onSquareClicked = { pos -> viewModel.onSquareClicked(pos) }
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "Turn: ${if (currentTurn == PieceColor.WHITE) "White" else "Black"}",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color(0xFFFFD700),
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    if (activeCampaignLevel != null) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF1A237E).copy(alpha = 0.9f))
+                        ) {
+                            Column(modifier = Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "🗺️ Lvl ${activeCampaignLevel!!.levelNumber}: ${activeCampaignLevel!!.title}",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFFFD700)
+                                )
+                                Text(
+                                    text = activeCampaignLevel!!.lessonTip,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFFFFE082),
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    if (isAiThinking) {
+                        Text("AI is thinking...", color = Color.LightGray, modifier = Modifier.padding(bottom = 8.dp))
+                    }
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        CartoonButton(
+                            text = "↩️ Undo",
+                            onClick = { viewModel.undoMove() },
+                            backgroundColor = Color(0xFFFF9800),
+                            shadowColor = Color(0xFFE65100),
+                            fontSize = 13.sp
+                        )
+                        if (gameMode == GameMode.PVAI) {
+                            CartoonButton(
+                                text = "💡 Hint",
+                                onClick = { viewModel.requestHint() },
+                                backgroundColor = Color(0xFF00ACC1),
+                                shadowColor = Color(0xFF00838F),
+                                fontSize = 13.sp
+                            )
+                        }
+                        CartoonButton(
+                            text = "🛑 Quit",
+                            onClick = { viewModel.backToMenu() },
+                            backgroundColor = Color(0xFFE53935),
+                            shadowColor = Color(0xFFB71C1C),
+                            fontSize = 13.sp
+                        )
+                    }
+
+                    when (val currentStatus = status) {
+                        is GameStatus.Checkmate -> {
+                            Text(
+                                text = "Checkmate! ${if (currentStatus.winner == PieceColor.WHITE) "White" else "Black"} wins!",
+                                fontSize = 20.sp,
+                                color = Color.Red,
+                                modifier = Modifier.padding(top = 12.dp)
+                            )
+                        }
+                        is GameStatus.Stalemate -> {
+                            Text(
+                                text = "Stalemate! It's a draw.",
+                                fontSize = 20.sp,
+                                color = Color.Blue,
+                                modifier = Modifier.padding(top = 12.dp)
+                            )
+                        }
+                        is GameStatus.Active -> {}
+                    }
+                }
+            }
+        } else {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     CartoonButton(
-                        text = "↩️ Undo",
-                        onClick = { viewModel.undoMove() },
-                        backgroundColor = Color(0xFFFF9800),
-                        shadowColor = Color(0xFFE65100),
+                        text = "🛑 Quit",
+                        onClick = { viewModel.backToMenu() },
+                        backgroundColor = Color(0xFFE53935),
+                        shadowColor = Color(0xFFB71C1C),
                         fontSize = 14.sp
                     )
-                    if (gameMode == GameMode.PVAI) {
+                    Text(
+                        text = "Turn: ${if (currentTurn == PieceColor.WHITE) "White" else "Black"}",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color(0xFFFFD700)
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         CartoonButton(
-                            text = "💡 Hint",
-                            onClick = { viewModel.requestHint() },
-                            backgroundColor = Color(0xFF00ACC1),
-                            shadowColor = Color(0xFF00838F),
+                            text = "↩️ Undo",
+                            onClick = { viewModel.undoMove() },
+                            backgroundColor = Color(0xFFFF9800),
+                            shadowColor = Color(0xFFE65100),
                             fontSize = 14.sp
                         )
+                        if (gameMode == GameMode.PVAI) {
+                            CartoonButton(
+                                text = "💡 Hint",
+                                onClick = { viewModel.requestHint() },
+                                backgroundColor = Color(0xFF00ACC1),
+                                shadowColor = Color(0xFF00838F),
+                                fontSize = 14.sp
+                            )
+                        }
                     }
                 }
-            }
 
-            if (activeCampaignLevel != null) {
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1A237E).copy(alpha = 0.9f))
-                ) {
-                    Column(modifier = Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "🗺️ Lvl ${activeCampaignLevel!!.levelNumber}: ${activeCampaignLevel!!.title}",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFFFFD700)
-                        )
-                        Text(
-                            text = activeCampaignLevel!!.lessonTip,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFFFFE082),
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(vertical = 2.dp)
-                        )
-                        Text(
-                            text = "Goals: ${activeCampaignLevel!!.goal1} | ${activeCampaignLevel!!.goal2} | ${activeCampaignLevel!!.goal3}",
-                            fontSize = 11.sp,
-                            color = Color.White,
-                            textAlign = TextAlign.Center
-                        )
+                if (activeCampaignLevel != null) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A237E).copy(alpha = 0.9f))
+                    ) {
+                        Column(modifier = Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "🗺️ Lvl ${activeCampaignLevel!!.levelNumber}: ${activeCampaignLevel!!.title}",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFFFD700)
+                            )
+                            Text(
+                                text = activeCampaignLevel!!.lessonTip,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFFFFE082),
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(vertical = 2.dp)
+                            )
+                            Text(
+                                text = "Goals: ${activeCampaignLevel!!.goal1} | ${activeCampaignLevel!!.goal2} | ${activeCampaignLevel!!.goal3}",
+                                fontSize = 11.sp,
+                                color = Color.White,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
-            }
 
-            if (isAiThinking) {
-                Text("AI is thinking...", color = Color.LightGray, modifier = Modifier.padding(bottom = 4.dp))
-            } else {
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            ChessBoardView(
-                board = board,
-                selectedPosition = selectedPosition,
-                legalMoves = legalMoves,
-                hintMove = hintMove,
-                boardTheme = boardTheme,
-                userColor = userColor,
-                onSquareClicked = { pos -> viewModel.onSquareClicked(pos) }
-            )
-
-            if (promotionPending != null) {
-                PromotionDialog(onPromotionSelected = { type -> viewModel.onPromotionSelected(type) })
-            }
-
-            when (val currentStatus = status) {
-                is GameStatus.Checkmate -> {
-                    Text(
-                        text = "Checkmate! ${if (currentStatus.winner == PieceColor.WHITE) "White" else "Black"} wins!",
-                        fontSize = 24.sp,
-                        color = Color.Red,
-                        modifier = Modifier.padding(top = 16.dp)
-                    )
+                if (isAiThinking) {
+                    Text("AI is thinking...", color = Color.LightGray, modifier = Modifier.padding(bottom = 4.dp))
+                } else {
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
-                is GameStatus.Stalemate -> {
-                    Text(
-                        text = "Stalemate! It's a draw.",
-                        fontSize = 24.sp,
-                        color = Color.Blue,
-                        modifier = Modifier.padding(top = 16.dp)
-                    )
+
+                ChessBoardView(
+                    board = board,
+                    selectedPosition = selectedPosition,
+                    legalMoves = legalMoves,
+                    hintMove = hintMove,
+                    boardTheme = boardTheme,
+                    userColor = userColor,
+                    onSquareClicked = { pos -> viewModel.onSquareClicked(pos) }
+                )
+
+                if (promotionPending != null) {
+                    PromotionDialog(onPromotionSelected = { type -> viewModel.onPromotionSelected(type) })
                 }
-                is GameStatus.Active -> {}
+
+                when (val currentStatus = status) {
+                    is GameStatus.Checkmate -> {
+                        Text(
+                            text = "Checkmate! ${if (currentStatus.winner == PieceColor.WHITE) "White" else "Black"} wins!",
+                            fontSize = 24.sp,
+                            color = Color.Red,
+                            modifier = Modifier.padding(top = 16.dp)
+                        )
+                    }
+                    is GameStatus.Stalemate -> {
+                        Text(
+                            text = "Stalemate! It's a draw.",
+                            fontSize = 24.sp,
+                            color = Color.Blue,
+                            modifier = Modifier.padding(top = 16.dp)
+                        )
+                    }
+                    is GameStatus.Active -> {}
+                }
             }
+        }
+
+        if (promotionPending != null && isLandscape) {
+            PromotionDialog(onPromotionSelected = { type -> viewModel.onPromotionSelected(type) })
         }
     }
 }
 
 @Composable
 fun ChessBoardView(
+    modifier: Modifier = Modifier.fillMaxWidth().aspectRatio(1f),
     board: ChessBoard,
     selectedPosition: Position?,
     legalMoves: List<Move>,
@@ -429,10 +556,7 @@ fun ChessBoardView(
     val cols = if (userColor == PieceColor.WHITE) 0..7 else 7 downTo 0
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(1f)
-            .border(2.dp, Color.Black)
+        modifier = modifier.border(2.dp, Color.Black)
     ) {
         for (row in rows) {
             Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
