@@ -97,6 +97,7 @@ fun ModeSelectionScreen(viewModel: ChessViewModel) {
     var selectedMode by remember { mutableStateOf(GameMode.PVAI) }
     var selectedPlayerColor by remember { mutableStateOf(PieceColor.WHITE) }
     var selectedDifficulty by remember { mutableStateOf(AiDifficulty.MEDIUM) }
+    val currentTheme by viewModel.boardTheme.collectAsState()
 
     Box(modifier = Modifier.fillMaxSize()) {
         Image(
@@ -117,73 +118,86 @@ fun ModeSelectionScreen(viewModel: ChessViewModel) {
                 fontSize = 36.sp,
                 fontWeight = FontWeight.Black,
                 color = Color(0xFFFFD700),
-                modifier = Modifier.padding(bottom = 24.dp)
+                modifier = Modifier.padding(bottom = 16.dp)
             )
 
-            Text("Game Mode", fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(top = 8.dp, bottom = 8.dp))
+            Text("Game Mode", fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(top = 4.dp, bottom = 4.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 CartoonButton(
                     text = "👥 vs Player",
                     onClick = { selectedMode = GameMode.PVP },
                     backgroundColor = if (selectedMode == GameMode.PVP) Color(0xFFFFB300) else Color(0xFF37474F),
                     shadowColor = if (selectedMode == GameMode.PVP) Color(0xFFC67C00) else Color(0xFF263238),
-                    fontSize = 15.sp
+                    fontSize = 14.sp
                 )
                 CartoonButton(
                     text = "🤖 vs AI",
                     onClick = { selectedMode = GameMode.PVAI },
                     backgroundColor = if (selectedMode == GameMode.PVAI) Color(0xFFFFB300) else Color(0xFF37474F),
                     shadowColor = if (selectedMode == GameMode.PVAI) Color(0xFFC67C00) else Color(0xFF263238),
-                    fontSize = 15.sp
+                    fontSize = 14.sp
                 )
             }
 
             if (selectedMode == GameMode.PVAI) {
-                Text("Your Color", fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
+                Text("Your Color", fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     CartoonButton(
                         text = "♔ White",
                         onClick = { selectedPlayerColor = PieceColor.WHITE },
                         backgroundColor = if (selectedPlayerColor == PieceColor.WHITE) Color(0xFF00ACC1) else Color(0xFF37474F),
                         shadowColor = if (selectedPlayerColor == PieceColor.WHITE) Color(0xFF00838F) else Color(0xFF263238),
-                        fontSize = 15.sp
+                        fontSize = 14.sp
                     )
                     CartoonButton(
                         text = "♚ Black",
                         onClick = { selectedPlayerColor = PieceColor.BLACK },
                         backgroundColor = if (selectedPlayerColor == PieceColor.BLACK) Color(0xFF00ACC1) else Color(0xFF37474F),
                         shadowColor = if (selectedPlayerColor == PieceColor.BLACK) Color(0xFF00838F) else Color(0xFF263238),
-                        fontSize = 15.sp
+                        fontSize = 14.sp
                     )
                 }
 
-                Text("AI Difficulty", fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
+                Text("AI Difficulty", fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     CartoonButton(
                         text = "🌱 Easy",
                         onClick = { selectedDifficulty = AiDifficulty.EASY },
                         backgroundColor = if (selectedDifficulty == AiDifficulty.EASY) Color(0xFF81C784) else Color(0xFF37474F),
                         shadowColor = if (selectedDifficulty == AiDifficulty.EASY) Color(0xFF388E3C) else Color(0xFF263238),
-                        fontSize = 14.sp
+                        fontSize = 13.sp
                     )
                     CartoonButton(
-                        text = "⚡ Medium",
+                        text = "⚡ Med",
                         onClick = { selectedDifficulty = AiDifficulty.MEDIUM },
                         backgroundColor = if (selectedDifficulty == AiDifficulty.MEDIUM) Color(0xFFFFB74D) else Color(0xFF37474F),
                         shadowColor = if (selectedDifficulty == AiDifficulty.MEDIUM) Color(0xFFF57C00) else Color(0xFF263238),
-                        fontSize = 14.sp
+                        fontSize = 13.sp
                     )
                     CartoonButton(
                         text = "🔥 Hard",
                         onClick = { selectedDifficulty = AiDifficulty.HARD },
                         backgroundColor = if (selectedDifficulty == AiDifficulty.HARD) Color(0xFFE57373) else Color(0xFF37474F),
                         shadowColor = if (selectedDifficulty == AiDifficulty.HARD) Color(0xD32F2F) else Color(0xFF263238),
-                        fontSize = 14.sp
+                        fontSize = 13.sp
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(36.dp))
+            Text("Board Theme", fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                BoardTheme.values().forEach { theme ->
+                    CartoonButton(
+                        text = theme.displayName,
+                        onClick = { viewModel.setBoardTheme(theme) },
+                        backgroundColor = if (currentTheme == theme) Color(0xFFAB47BC) else Color(0xFF37474F),
+                        shadowColor = if (currentTheme == theme) Color(0xFF7B1FA2) else Color(0xFF263238),
+                        fontSize = 12.sp
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
 
             CartoonButton(
                 text = "🚀 START GAME",
@@ -197,15 +211,15 @@ fun ModeSelectionScreen(viewModel: ChessViewModel) {
                 fontSize = 20.sp
             )
             
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             
             CartoonButton(
                 text = "⬅️ Back",
                 onClick = { viewModel.backToMenu() },
-                modifier = Modifier.fillMaxWidth(0.5f),
+                modifier = Modifier.fillMaxWidth(0.4f),
                 backgroundColor = Color(0xFFE53935),
                 shadowColor = Color(0xFFB71C1C),
-                fontSize = 16.sp
+                fontSize = 14.sp
             )
         }
     }
@@ -222,6 +236,8 @@ fun GameScreen(viewModel: ChessViewModel) {
     val isAiThinking by viewModel.isAiThinking.collectAsState()
     val gameMode by viewModel.gameMode.collectAsState()
     val aiColor by viewModel.aiColor.collectAsState()
+    val boardTheme by viewModel.boardTheme.collectAsState()
+    val hintMove by viewModel.hintMove.collectAsState()
     
     val userColor = if (gameMode == GameMode.PVAI) aiColor.opposite() else PieceColor.WHITE
 
@@ -240,7 +256,7 @@ fun GameScreen(viewModel: ChessViewModel) {
             verticalArrangement = Arrangement.Center
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -249,55 +265,73 @@ fun GameScreen(viewModel: ChessViewModel) {
                     onClick = { viewModel.backToMenu() },
                     backgroundColor = Color(0xFFE53935),
                     shadowColor = Color(0xFFB71C1C),
-                    fontSize = 15.sp
+                    fontSize = 14.sp
                 )
                 Text(
                     text = "Turn: ${if (currentTurn == PieceColor.WHITE) "White" else "Black"}",
-                    fontSize = 20.sp,
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.Black,
                     color = Color(0xFFFFD700)
                 )
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    CartoonButton(
+                        text = "↩️ Undo",
+                        onClick = { viewModel.undoMove() },
+                        backgroundColor = Color(0xFFFF9800),
+                        shadowColor = Color(0xFFE65100),
+                        fontSize = 14.sp
+                    )
+                    CartoonButton(
+                        text = "💡 Hint",
+                        onClick = { viewModel.requestHint() },
+                        backgroundColor = Color(0xFF00ACC1),
+                        shadowColor = Color(0xFF00838F),
+                        fontSize = 14.sp
+                    )
+                }
             }
 
             if (isAiThinking) {
-                Text("AI is thinking...", color = Color.LightGray, modifier = Modifier.padding(bottom = 8.dp))
+                Text("AI is thinking...", color = Color.LightGray, modifier = Modifier.padding(bottom = 4.dp))
             } else {
-                Spacer(modifier = Modifier.height(28.dp))
+                Spacer(modifier = Modifier.height(20.dp))
             }
 
             ChessBoardView(
                 board = board,
                 selectedPosition = selectedPosition,
                 legalMoves = legalMoves,
+                hintMove = hintMove,
+                boardTheme = boardTheme,
                 userColor = userColor,
                 onSquareClicked = { pos -> viewModel.onSquareClicked(pos) }
             )
 
-        if (promotionPending != null) {
-            PromotionDialog(onPromotionSelected = { type -> viewModel.onPromotionSelected(type) })
-        }
+            if (promotionPending != null) {
+                PromotionDialog(onPromotionSelected = { type -> viewModel.onPromotionSelected(type) })
+            }
 
-        when (val currentStatus = status) {
-            is GameStatus.Checkmate -> {
-                Text(
-                    text = "Checkmate! ${if (currentStatus.winner == PieceColor.WHITE) "White" else "Black"} wins!",
-                    fontSize = 24.sp,
-                    color = Color.Red,
-                    modifier = Modifier.padding(top = 16.dp)
-                )
+            when (val currentStatus = status) {
+                is GameStatus.Checkmate -> {
+                    Text(
+                        text = "Checkmate! ${if (currentStatus.winner == PieceColor.WHITE) "White" else "Black"} wins!",
+                        fontSize = 24.sp,
+                        color = Color.Red,
+                        modifier = Modifier.padding(top = 16.dp)
+                    )
+                }
+                is GameStatus.Stalemate -> {
+                    Text(
+                        text = "Stalemate! It's a draw.",
+                        fontSize = 24.sp,
+                        color = Color.Blue,
+                        modifier = Modifier.padding(top = 16.dp)
+                    )
+                }
+                is GameStatus.Active -> {}
             }
-            is GameStatus.Stalemate -> {
-                Text(
-                    text = "Stalemate! It's a draw.",
-                    fontSize = 24.sp,
-                    color = Color.Blue,
-                    modifier = Modifier.padding(top = 16.dp)
-                )
-            }
-            is GameStatus.Active -> {}
         }
     }
-}
 }
 
 @Composable
@@ -305,6 +339,8 @@ fun ChessBoardView(
     board: ChessBoard,
     selectedPosition: Position?,
     legalMoves: List<Move>,
+    hintMove: Move? = null,
+    boardTheme: BoardTheme = BoardTheme.WOOD,
     userColor: PieceColor = PieceColor.WHITE,
     onSquareClicked: (Position) -> Unit
 ) {
@@ -323,10 +359,11 @@ fun ChessBoardView(
                     val pos = Position(row, col)
                     val piece = board.getPiece(pos)
                     val isLightSquare = (row + col) % 2 != 0
-                    val backgroundColor = if (isLightSquare) Color(0xFFF0D9B5) else Color(0xFFB58863)
+                    val backgroundColor = if (isLightSquare) boardTheme.lightColor else boardTheme.darkColor
 
                     val isSelected = selectedPosition == pos
                     val isLegalMove = legalMoves.any { it.to == pos }
+                    val isHintSquare = hintMove != null && (hintMove.from == pos || hintMove.to == pos)
 
                     Box(
                         modifier = Modifier
@@ -334,6 +371,7 @@ fun ChessBoardView(
                             .fillMaxHeight()
                             .background(
                                 when {
+                                    isHintSquare -> Color(0xFF00E5FF) // Bright cyan for hint
                                     isSelected -> Color(0xFFFFF59D)
                                     isLegalMove -> Color(0xFFA5D6A7)
                                     else -> backgroundColor

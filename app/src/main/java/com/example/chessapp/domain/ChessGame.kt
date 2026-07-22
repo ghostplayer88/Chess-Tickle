@@ -15,7 +15,16 @@ class ChessGame {
     private val _status = MutableStateFlow<GameStatus>(GameStatus.Active)
     val status: StateFlow<GameStatus> = _status.asStateFlow()
 
+    private data class GameSnapshot(
+        val board: ChessBoard,
+        val currentTurn: PieceColor,
+        val status: GameStatus,
+        val moveHistory: List<Move>
+    )
+
+    private val historyStack = mutableListOf<GameSnapshot>()
     private val moveHistory = mutableListOf<Move>()
+    val moves: List<Move> get() = moveHistory.toList()
 
     fun copy(): ChessGame {
         val newGame = ChessGame()
@@ -33,11 +42,24 @@ class ChessGame {
         val legalMoves = getLegalMoves(move.from)
         val actualMove = legalMoves.find { it.to == move.to && it.promotion == move.promotion } ?: return false
 
+        historyStack.add(GameSnapshot(_board.value, _currentTurn.value, _status.value, ArrayList(moveHistory)))
+
         _board.value = _board.value.applyMove(actualMove)
         moveHistory.add(actualMove)
         _currentTurn.value = _currentTurn.value.opposite()
 
         updateGameStatus()
+        return true
+    }
+
+    fun undoLastMove(): Boolean {
+        if (historyStack.isEmpty()) return false
+        val lastState = historyStack.removeAt(historyStack.size - 1)
+        _board.value = lastState.board
+        _currentTurn.value = lastState.currentTurn
+        _status.value = lastState.status
+        moveHistory.clear()
+        moveHistory.addAll(lastState.moveHistory)
         return true
     }
 

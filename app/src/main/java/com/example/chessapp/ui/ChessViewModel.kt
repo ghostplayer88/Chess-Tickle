@@ -8,10 +8,16 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import androidx.compose.ui.graphics.Color
 
 enum class GameMode { PVP, PVAI }
 enum class AiDifficulty(val depth: Int) { EASY(1), MEDIUM(2), HARD(3) }
 enum class AppScreen { MENU, MODE_SELECTION, GAME, TUTORIAL }
+enum class BoardTheme(val displayName: String, val lightColor: Color, val darkColor: Color) {
+    WOOD("Classic Wood", Color(0xFFF0D9B5), Color(0xFFB58863)),
+    EMERALD("Emerald", Color(0xFFE8EDF9), Color(0xFF769656)),
+    NEON("Cyberpunk Neon", Color(0xFF34495E), Color(0xFF1ABC9C))
+}
 
 class ChessViewModel : ViewModel() {
     private var game = ChessGame()
@@ -47,24 +53,17 @@ class ChessViewModel : ViewModel() {
     private val _aiDifficulty = MutableStateFlow(AiDifficulty.MEDIUM)
     val aiDifficulty: StateFlow<AiDifficulty> = _aiDifficulty.asStateFlow()
 
+    private val _boardTheme = MutableStateFlow(BoardTheme.WOOD)
+    val boardTheme: StateFlow<BoardTheme> = _boardTheme.asStateFlow()
+
     private val _isAiThinking = MutableStateFlow(false)
     val isAiThinking: StateFlow<Boolean> = _isAiThinking.asStateFlow()
 
-    fun startGame(mode: GameMode, aiPlaysAs: PieceColor, difficulty: AiDifficulty) {
-        game = ChessGame()
-        _gameMode.value = mode
-        _aiColor.value = aiPlaysAs
-        _aiDifficulty.value = difficulty
-        _isAiThinking.value = false
-        _promotionPending.value = null
-        clearSelection()
-        updateFlows()
-        _currentScreen.value = AppScreen.GAME
-        checkAiTurn()
-    }
+    private val _hintMove = MutableStateFlow<Move?>(null)
+    val hintMove: StateFlow<Move?> = _hintMove.asStateFlow()
 
-    fun backToMenu() {
-        _currentScreen.value = AppScreen.MENU
+    fun setBoardTheme(theme: BoardTheme) {
+        _boardTheme.value = theme
     }
 
     fun goToModeSelection() {
@@ -75,9 +74,49 @@ class ChessViewModel : ViewModel() {
         _currentScreen.value = AppScreen.TUTORIAL
     }
 
+    fun undoMove() {
+        if (_isAiThinking.value) return
+        _hintMove.value = null
+        if (_gameMode.value == GameMode.PVAI) {
+            // Undo twice if it's AI mode so control returns to user
+            game.undoLastMove()
+            game.undoLastMove()
+        } else {
+            game.undoLastMove()
+        }
+        clearSelection()
+        updateFlows()
+    }
+
+    fun requestHint() {
+        if (_isAiThinking.value || _status.value !is GameStatus.Active) return
+        viewModelScope.launch {
+            _hintMove.value = ai.getBestMove(game, depth = 3)
+        }
+    }
+
+    fun startGame(mode: GameMode, aiPlaysAs: PieceColor, difficulty: AiDifficulty) {
+        game = ChessGame()
+        _gameMode.value = mode
+        _aiColor.value = aiPlaysAs
+        _aiDifficulty.value = difficulty
+        _isAiThinking.value = false
+        _promotionPending.value = null
+        _hintMove.value = null
+        clearSelection()
+        updateFlows()
+        _currentScreen.value = AppScreen.GAME
+        checkAiTurn()
+    }
+
+    fun backToMenu() {
+        _currentScreen.value = AppScreen.MENU
+    }
+
     fun onSquareClicked(position: Position) {
         if (_promotionPending.value != null || _isAiThinking.value) return 
 
+        _hintMove.value = null
         val selected = _selectedPosition.value
         
         if (selected != null) {
