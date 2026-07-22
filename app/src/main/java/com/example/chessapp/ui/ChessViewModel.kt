@@ -1,0 +1,153 @@
+package com.example.chessapp.ui
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.chessapp.domain.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+
+enum class GameMode { PVP, PVAI }
+enum class AiDifficulty(val depth: Int) { EASY(1), MEDIUM(2), HARD(3) }
+enum class AppScreen { MENU, MODE_SELECTION, GAME, TUTORIAL }
+
+class ChessViewModel : ViewModel() {
+    private var game = ChessGame()
+    private val ai = ChessAI()
+
+    private val _currentScreen = MutableStateFlow(AppScreen.MENU)
+    val currentScreen: StateFlow<AppScreen> = _currentScreen.asStateFlow()
+
+    private val _board = MutableStateFlow(game.board.value)
+    val board: StateFlow<ChessBoard> = _board.asStateFlow()
+
+    private val _currentTurn = MutableStateFlow(game.currentTurn.value)
+    val currentTurn: StateFlow<PieceColor> = _currentTurn.asStateFlow()
+
+    private val _status = MutableStateFlow(game.status.value)
+    val status: StateFlow<GameStatus> = _status.asStateFlow()
+
+    private val _selectedPosition = MutableStateFlow<Position?>(null)
+    val selectedPosition: StateFlow<Position?> = _selectedPosition.asStateFlow()
+
+    private val _legalMoves = MutableStateFlow<List<Move>>(emptyList())
+    val legalMoves: StateFlow<List<Move>> = _legalMoves.asStateFlow()
+
+    private val _promotionPending = MutableStateFlow<Move?>(null)
+    val promotionPending: StateFlow<Move?> = _promotionPending.asStateFlow()
+
+    private val _gameMode = MutableStateFlow(GameMode.PVP)
+    val gameMode: StateFlow<GameMode> = _gameMode.asStateFlow()
+
+    private val _aiColor = MutableStateFlow(PieceColor.BLACK)
+    val aiColor: StateFlow<PieceColor> = _aiColor.asStateFlow()
+
+    private val _aiDifficulty = MutableStateFlow(AiDifficulty.MEDIUM)
+    val aiDifficulty: StateFlow<AiDifficulty> = _aiDifficulty.asStateFlow()
+
+    private val _isAiThinking = MutableStateFlow(false)
+    val isAiThinking: StateFlow<Boolean> = _isAiThinking.asStateFlow()
+
+    fun startGame(mode: GameMode, aiPlaysAs: PieceColor, difficulty: AiDifficulty) {
+        game = ChessGame()
+        _gameMode.value = mode
+        _aiColor.value = aiPlaysAs
+        _aiDifficulty.value = difficulty
+        _isAiThinking.value = false
+        _promotionPending.value = null
+        clearSelection()
+        updateFlows()
+        _currentScreen.value = AppScreen.GAME
+        checkAiTurn()
+    }
+
+    fun backToMenu() {
+        _currentScreen.value = AppScreen.MENU
+    }
+
+    fun goToModeSelection() {
+        _currentScreen.value = AppScreen.MODE_SELECTION
+    }
+
+    fun goToTutorial() {
+        _currentScreen.value = AppScreen.TUTORIAL
+    }
+
+    fun onSquareClicked(position: Position) {
+        if (_promotionPending.value != null || _isAiThinking.value) return 
+
+        val selected = _selectedPosition.value
+        
+        if (selected != null) {
+            val moves = _legalMoves.value
+            val moveToMake = moves.find { it.to == position }
+            
+            if (moveToMake != null) {
+                if (moveToMake.promotion != null) {
+                    _promotionPending.value = moveToMake 
+                    return
+                } else {
+                    executeMove(moveToMake)
+                    return
+                }
+            }
+        }
+        
+        val piece = board.value.getPiece(position)
+        if (piece != null && piece.color == currentTurn.value) {
+            _selectedPosition.value = position
+            _legalMoves.value = game.getLegalMoves(position)
+        } else {
+            clearSelection()
+        }
+    }
+
+    fun onPromotionSelected(promotionType: PieceType) {
+        val pendingMove = _promotionPending.value ?: return
+        
+        val moves = game.getLegalMoves(pendingMove.from)
+        val move = moves.find { it.to == pendingMove.to && it.promotion == promotionType }
+        
+        if (move != null) {
+            executeMove(move)
+        }
+        
+        _promotionPending.value = null
+    }
+
+    private fun executeMove(move: Move) {
+        if (game.makeMove(move)) {
+            clearSelection()
+            updateFlows()
+            checkAiTurn()
+        }
+    }
+
+    private fun checkAiTurn() {
+        if (_gameMode.value == GameMode.PVAI && _currentTurn.value == _aiColor.value && _status.value is GameStatus.Active) {
+            _isAiThinking.value = true
+            viewModelScope.launch {
+                delay(1000) // Delay so AI doesn't move instantly
+                val bestMove = ai.getBestMove(game, depth = _aiDifficulty.value.depth)
+                if (bestMove != null) {
+                    game.makeMove(bestMove)
+                    updateFlows()
+                }
+                _isAiThinking.value = false
+            }
+        }
+    }
+
+    private fun updateFlows() {
+        _board.value = game.board.value
+        _currentTurn.value = game.currentTurn.value
+        _status.value = game.status.value
+    }
+
+    private fun clearSelection() {
+        _selectedPosition.value = null
+        _legalMoves.value = emptyList()
+    }
+}
