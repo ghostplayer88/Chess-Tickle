@@ -242,6 +242,12 @@ class ChessGame {
     }
 
     private fun updateGameStatus() {
+        // Insufficient material check: Bare Kings (only 2 kings remain on the board)
+        if (_board.value.pieces.size <= 2) {
+            _status.value = GameStatus.Stalemate
+            return
+        }
+
         var hasLegalMoves = false
         for ((pos, piece) in _board.value.pieces) {
             if (piece.color == _currentTurn.value) {
