@@ -260,10 +260,20 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
                     // Check campaign completion
                     val campaignLvl = _activeCampaignLevel.value
                     if (campaignLvl != null) {
-                        val (stars, _) = campaignManager.completeLevel(campaignLvl.levelNumber, game.moves.size, false)
+                        val turnsTaken = game.moves.size
+                        val (stars, _) = campaignManager.completeLevel(campaignLvl.levelNumber, turnsTaken, false)
+                        
                         if (campaignLvl.levelNumber == 1) triggerAchievement("campaign_lvl1")
-                        triggerAchievement("campaign_10stars", campaignManager.getTotalStars())
-                        if (campaignManager.isCampaignComplete()) triggerAchievement("campaign_complete")
+                        if (campaignLvl.levelNumber == 1 && stars == 3) triggerAchievement("campaign_lvl1_3stars")
+                        if (campaignLvl.levelNumber == 10 && stars == 3) triggerAchievement("campaign_boss_3stars")
+
+                        val totalStars = campaignManager.getTotalStars()
+                        triggerAchievement("campaign_10stars", totalStars)
+                        triggerAchievement("campaign_20stars", totalStars)
+                        triggerAchievement("campaign_30stars", totalStars)
+
+                        if (turnsTaken <= 30) triggerAchievement("campaign_speed_star")
+                        triggerAchievement("campaign_queen_star")
                     }
                 }
             }

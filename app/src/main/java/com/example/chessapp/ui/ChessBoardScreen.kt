@@ -278,6 +278,7 @@ fun GameScreen(viewModel: ChessViewModel) {
     val gameMode by viewModel.gameMode.collectAsState()
     val aiColor by viewModel.aiColor.collectAsState()
     val boardTheme by viewModel.boardTheme.collectAsState()
+    val activeCampaignLevel by viewModel.activeCampaignLevel.collectAsState()
     val hintMove by viewModel.hintMove.collectAsState()
     
     val userColor = if (gameMode == GameMode.PVAI) aiColor.opposite() else PieceColor.WHITE
@@ -334,10 +335,32 @@ fun GameScreen(viewModel: ChessViewModel) {
                 }
             }
 
+            if (activeCampaignLevel != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1A237E).copy(alpha = 0.9f))
+                ) {
+                    Column(modifier = Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "🗺️ Lvl ${activeCampaignLevel!!.levelNumber}: ${activeCampaignLevel!!.title}",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFFFD700)
+                        )
+                        Text(
+                            text = "Goals: ${activeCampaignLevel!!.goal1} | ${activeCampaignLevel!!.goal2} | ${activeCampaignLevel!!.goal3}",
+                            fontSize = 11.sp,
+                            color = Color.White,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+
             if (isAiThinking) {
                 Text("AI is thinking...", color = Color.LightGray, modifier = Modifier.padding(bottom = 4.dp))
             } else {
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
             ChessBoardView(
@@ -681,6 +704,12 @@ fun CampaignScreen(viewModel: ChessViewModel) {
                                     text = lvl.description,
                                     fontSize = 13.sp,
                                     color = Color.LightGray,
+                                    modifier = Modifier.padding(top = 2.dp)
+                                )
+                                Text(
+                                    text = "Goals: ${lvl.goal1} | ${lvl.goal2} | ${lvl.goal3}",
+                                    fontSize = 11.sp,
+                                    color = Color(0xFF81D4FA),
                                     modifier = Modifier.padding(top = 4.dp)
                                 )
                                 Text(

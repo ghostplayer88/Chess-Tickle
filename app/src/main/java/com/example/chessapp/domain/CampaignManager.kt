@@ -11,6 +11,9 @@ data class CampaignLevel(
     val description: String,
     val difficulty: AiDifficulty,
     val theme: BoardTheme,
+    val goal1: String = "⭐ Win the match",
+    val goal2: String = "⭐⭐ Win in 30 turns or fewer",
+    val goal3: String = "⭐⭐⭐ Win without losing your Queen",
     var starsEarned: Int = 0,
     var isUnlocked: Boolean = false
 )
