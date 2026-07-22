@@ -26,12 +26,17 @@ class ChessGame {
     private val moveHistory = mutableListOf<Move>()
     val moves: List<Move> get() = moveHistory.toList()
 
+    private var halfMoveClock = 0
+    private val positionHistory = mutableMapOf<String, Int>()
+
     fun copy(): ChessGame {
         val newGame = ChessGame()
         newGame._board.value = this.board.value
         newGame._currentTurn.value = this.currentTurn.value
         newGame._status.value = this.status.value
         newGame.moveHistory.addAll(this.moveHistory)
+        newGame.halfMoveClock = this.halfMoveClock
+        newGame.positionHistory.putAll(this.positionHistory)
         return newGame
     }
 
@@ -44,9 +49,20 @@ class ChessGame {
 
         historyStack.add(GameSnapshot(_board.value, _currentTurn.value, _status.value, ArrayList(moveHistory)))
 
+        // Reset halfMoveClock on Pawn move or Capture
+        if (actualMove.piece.type == PieceType.PAWN || actualMove.capturedPiece != null) {
+            halfMoveClock = 0
+        } else {
+            halfMoveClock++
+        }
+
         _board.value = _board.value.applyMove(actualMove)
         moveHistory.add(actualMove)
         _currentTurn.value = _currentTurn.value.opposite()
+
+        // Track Threefold Repetition
+        val posKey = getPositionKey()
+        positionHistory[posKey] = (positionHistory[posKey] ?: 0) + 1
 
         updateGameStatus()
         return true
@@ -241,9 +257,57 @@ class ChessGame {
         return false
     }
 
+    private fun getPositionKey(): String {
+        val piecesStr = _board.value.pieces.entries.sortedBy { it.key.row * 8 + it.key.col }
+            .joinToString(";") { "${it.key.row},${it.key.col}:${it.value.color}${it.value.type}" }
+        return "$piecesStr|_currentTurn:${_currentTurn.value}"
+    }
+
+    private fun isInsufficientMaterial(): Boolean {
+        val pieces = _board.value.pieces.values.toList()
+        if (pieces.size == 2) return true // King vs King
+        
+        if (pieces.size == 3) {
+            val nonKings = pieces.filter { it.type != PieceType.KING }
+            if (nonKings.size == 1 && (nonKings[0].type == PieceType.KNIGHT || nonKings[0].type == PieceType.BISHOP)) {
+                return true // King + Knight vs King OR King + Bishop vs King
+            }
+        }
+
+        if (pieces.size == 4) {
+            val whitePieces = pieces.filter { it.color == PieceColor.WHITE && it.type != PieceType.KING }
+            val blackPieces = pieces.filter { it.color == PieceColor.BLACK && it.type != PieceType.KING }
+            if (whitePieces.size == 1 && blackPieces.size == 1 &&
+                whitePieces[0].type == PieceType.BISHOP && blackPieces[0].type == PieceType.BISHOP) {
+                val whiteBishopPos = _board.value.pieces.entries.find { it.value == whitePieces[0] }?.key
+                val blackBishopPos = _board.value.pieces.entries.find { it.value == blackPieces[0] }?.key
+                if (whiteBishopPos != null && blackBishopPos != null) {
+                    val whiteSquareColor = (whiteBishopPos.row + whiteBishopPos.col) % 2
+                    val blackSquareColor = (blackBishopPos.row + blackBishopPos.col) % 2
+                    if (whiteSquareColor == blackSquareColor) return true // Same color bishops
+                }
+            }
+        }
+
+        return false
+    }
+
     private fun updateGameStatus() {
-        // Insufficient material check: Bare Kings (only 2 kings remain on the board)
-        if (_board.value.pieces.size <= 2) {
+        // 1. FIDE Insufficient material check
+        if (isInsufficientMaterial()) {
+            _status.value = GameStatus.Stalemate
+            return
+        }
+
+        // 2. FIDE 50-Move Rule (100 half-moves)
+        if (halfMoveClock >= 100) {
+            _status.value = GameStatus.Stalemate
+            return
+        }
+
+        // 3. FIDE Threefold Repetition Rule
+        val currentPosKey = getPositionKey()
+        if ((positionHistory[currentPosKey] ?: 0) >= 3) {
             _status.value = GameStatus.Stalemate
             return
         }
