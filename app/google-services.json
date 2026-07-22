@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "58444918585",
+    "project_id": "chess-tickle",
+    "storage_bucket": "chess-tickle.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:58444918585:android:30f8f39676c08cbfd202e8",
+        "android_client_info": {
+          "package_name": "com.Ghostind.Chesstickle"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBDXDku3D14CLUqseu5U1ImxgzQUVRLv_E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

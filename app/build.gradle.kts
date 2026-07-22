@@ -2,13 +2,14 @@ plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.compose.compiler)
   alias(libs.plugins.kotlin.serialization)
+  alias(libs.plugins.google.services)
 }
 
 android {
     namespace = "com.example.chessapp"
     compileSdk = 36
     defaultConfig {
-        applicationId = "com.example.chessapp"
+        applicationId = "com.Ghostind.Chesstickle"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
@@ -81,4 +82,8 @@ dependencies {
   implementation(libs.androidx.navigation3.ui)
   implementation(libs.androidx.navigation3.runtime)
   implementation(libs.androidx.lifecycle.viewmodel.navigation3)
+
+  // Firebase
+  implementation(platform(libs.firebase.bom))
+  implementation(libs.firebase.analytics)
 }
