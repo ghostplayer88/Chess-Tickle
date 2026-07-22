@@ -1,6 +1,7 @@
 package com.example.chessapp.ui
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.chessapp.domain.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,19 +13,29 @@ import androidx.compose.ui.graphics.Color
 
 enum class GameMode { PVP, PVAI }
 enum class AiDifficulty(val depth: Int) { EASY(1), MEDIUM(2), HARD(3) }
-enum class AppScreen { MENU, MODE_SELECTION, GAME, TUTORIAL }
+enum class AppScreen { MENU, MODE_SELECTION, GAME, TUTORIAL, CAMPAIGN, ACHIEVEMENTS }
 enum class BoardTheme(val displayName: String, val lightColor: Color, val darkColor: Color) {
     WOOD("Classic Wood", Color(0xFFF0D9B5), Color(0xFFB58863)),
     EMERALD("Emerald", Color(0xFFE8EDF9), Color(0xFF769656)),
     NEON("Cyberpunk Neon", Color(0xFF34495E), Color(0xFF1ABC9C))
 }
 
-class ChessViewModel : ViewModel() {
+class ChessViewModel(application: Application) : AndroidViewModel(application) {
     private var game = ChessGame()
     private val ai = ChessAI()
 
+    val achievementManager = AchievementManager(application)
+    val campaignManager = CampaignManager(application)
+    private val soundManager = SoundManager()
+
     private val _currentScreen = MutableStateFlow(AppScreen.MENU)
     val currentScreen: StateFlow<AppScreen> = _currentScreen.asStateFlow()
+
+    private val _unlockedToast = MutableStateFlow<Achievement?>(null)
+    val unlockedToast: StateFlow<Achievement?> = _unlockedToast.asStateFlow()
+
+    private val _activeCampaignLevel = MutableStateFlow<CampaignLevel?>(null)
+    val activeCampaignLevel: StateFlow<CampaignLevel?> = _activeCampaignLevel.asStateFlow()
 
     private val _board = MutableStateFlow(game.board.value)
     val board: StateFlow<ChessBoard> = _board.asStateFlow()
@@ -64,6 +75,7 @@ class ChessViewModel : ViewModel() {
 
     fun setBoardTheme(theme: BoardTheme) {
         _boardTheme.value = theme
+        triggerAchievement("change_theme")
     }
 
     fun goToModeSelection() {
@@ -72,13 +84,41 @@ class ChessViewModel : ViewModel() {
 
     fun goToTutorial() {
         _currentScreen.value = AppScreen.TUTORIAL
+        triggerAchievement("view_tutorial")
+    }
+
+    fun goToCampaign() {
+        _currentScreen.value = AppScreen.CAMPAIGN
+    }
+
+    fun goToAchievements() {
+        _currentScreen.value = AppScreen.ACHIEVEMENTS
+    }
+
+    fun startCampaignLevel(level: CampaignLevel) {
+        _activeCampaignLevel.value = level
+        setBoardTheme(level.theme)
+        startGame(GameMode.PVAI, PieceColor.BLACK, level.difficulty)
+    }
+
+    fun dismissToast() {
+        _unlockedToast.value = null
+    }
+
+    fun triggerAchievement(id: String, increment: Int = 1) {
+        val newlyUnlocked = achievementManager.unlockOrProgress(id, increment)
+        if (newlyUnlocked != null) {
+            _unlockedToast.value = newlyUnlocked
+            soundManager.playAchievementSound()
+        }
     }
 
     fun undoMove() {
         if (_isAiThinking.value) return
         _hintMove.value = null
+        triggerAchievement("use_undo")
+        soundManager.playMoveSound()
         if (_gameMode.value == GameMode.PVAI) {
-            // Undo twice if it's AI mode so control returns to user
             game.undoLastMove()
             game.undoLastMove()
         } else {
@@ -90,6 +130,8 @@ class ChessViewModel : ViewModel() {
 
     fun requestHint() {
         if (_isAiThinking.value || _status.value !is GameStatus.Active) return
+        triggerAchievement("use_hint")
+        soundManager.playMoveSound()
         viewModelScope.launch {
             _hintMove.value = ai.getBestMove(game, depth = 3)
         }
@@ -110,6 +152,7 @@ class ChessViewModel : ViewModel() {
     }
 
     fun backToMenu() {
+        _activeCampaignLevel.value = null
         _currentScreen.value = AppScreen.MENU
     }
 
@@ -151,12 +194,27 @@ class ChessViewModel : ViewModel() {
         
         if (move != null) {
             executeMove(move)
+            triggerAchievement("promote_pawn")
         }
         
         _promotionPending.value = null
     }
 
     private fun executeMove(move: Move) {
+        triggerAchievement("first_move")
+        if (move.capturedPiece != null) {
+            triggerAchievement("first_capture")
+            soundManager.playCaptureSound()
+        } else {
+            soundManager.playMoveSound()
+        }
+        if (move.isCastling) {
+            triggerAchievement("castle")
+            triggerAchievement("castle_3x")
+        }
+        if (move.isEnPassant) {
+            triggerAchievement("en_passant")
+        }
         if (game.makeMove(move)) {
             clearSelection()
             updateFlows()
@@ -168,11 +226,10 @@ class ChessViewModel : ViewModel() {
         if (_gameMode.value == GameMode.PVAI && _currentTurn.value == _aiColor.value && _status.value is GameStatus.Active) {
             _isAiThinking.value = true
             viewModelScope.launch {
-                delay(1000) // Delay so AI doesn't move instantly
+                delay(1000)
                 val bestMove = ai.getBestMove(game, depth = _aiDifficulty.value.depth)
                 if (bestMove != null) {
-                    game.makeMove(bestMove)
-                    updateFlows()
+                    executeMove(bestMove)
                 }
                 _isAiThinking.value = false
             }
@@ -183,6 +240,38 @@ class ChessViewModel : ViewModel() {
         _board.value = game.board.value
         _currentTurn.value = game.currentTurn.value
         _status.value = game.status.value
+
+        when (val currentStatus = _status.value) {
+            is GameStatus.Checkmate -> {
+                soundManager.playVictorySound()
+                triggerAchievement("win_checkmate")
+                val userColor = if (_gameMode.value == GameMode.PVAI) _aiColor.value.opposite() else PieceColor.WHITE
+                if (currentStatus.winner == userColor) {
+                    if (_gameMode.value == GameMode.PVAI) {
+                        when (_aiDifficulty.value) {
+                            AiDifficulty.EASY -> triggerAchievement("win_easy_ai")
+                            AiDifficulty.MEDIUM -> triggerAchievement("win_med_ai")
+                            AiDifficulty.HARD -> triggerAchievement("win_hard_ai")
+                        }
+                    } else {
+                        triggerAchievement("play_pvp")
+                    }
+
+                    // Check campaign completion
+                    val campaignLvl = _activeCampaignLevel.value
+                    if (campaignLvl != null) {
+                        val (stars, _) = campaignManager.completeLevel(campaignLvl.levelNumber, game.moves.size, false)
+                        if (campaignLvl.levelNumber == 1) triggerAchievement("campaign_lvl1")
+                        triggerAchievement("campaign_10stars", campaignManager.getTotalStars())
+                        if (campaignManager.isCampaignComplete()) triggerAchievement("campaign_complete")
+                    }
+                }
+            }
+            is GameStatus.Stalemate -> {
+                triggerAchievement("stalemate")
+            }
+            is GameStatus.Active -> {}
+        }
     }
 
     private fun clearSelection() {

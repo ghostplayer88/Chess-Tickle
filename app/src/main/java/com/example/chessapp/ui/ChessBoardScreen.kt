@@ -35,12 +35,21 @@ import com.example.chessapp.domain.*
 @Composable
 fun ChessAppScreen(viewModel: ChessViewModel = viewModel()) {
     val currentScreen by viewModel.currentScreen.collectAsState()
+    val unlockedToast by viewModel.unlockedToast.collectAsState()
 
-    when (currentScreen) {
-        AppScreen.MENU -> MenuScreen(viewModel)
-        AppScreen.MODE_SELECTION -> ModeSelectionScreen(viewModel)
-        AppScreen.GAME -> GameScreen(viewModel)
-        AppScreen.TUTORIAL -> TutorialScreen(viewModel)
+    Box(modifier = Modifier.fillMaxSize()) {
+        when (currentScreen) {
+            AppScreen.MENU -> MenuScreen(viewModel)
+            AppScreen.MODE_SELECTION -> ModeSelectionScreen(viewModel)
+            AppScreen.GAME -> GameScreen(viewModel)
+            AppScreen.TUTORIAL -> TutorialScreen(viewModel)
+            AppScreen.CAMPAIGN -> CampaignScreen(viewModel)
+            AppScreen.ACHIEVEMENTS -> AchievementsScreen(viewModel)
+        }
+
+        if (unlockedToast != null) {
+            AchievementToast(achievement = unlockedToast!!, onDismiss = { viewModel.dismissToast() })
+        }
     }
 }
 
@@ -53,7 +62,6 @@ fun MenuScreen(viewModel: ChessViewModel) {
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize()
         )
-        // Soft subtle overlay so text pops while background stays bright and visible
         Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.15f)))
         
         Column(
@@ -63,11 +71,22 @@ fun MenuScreen(viewModel: ChessViewModel) {
         ) {
             Text(
                 text = "Chess-Tickle",
-                fontSize = 58.sp,
+                fontSize = 50.sp,
                 fontWeight = FontWeight.Black,
                 color = Color(0xFFFFD700),
-                modifier = Modifier.padding(bottom = 48.dp)
+                modifier = Modifier.padding(bottom = 24.dp)
             )
+
+            CartoonButton(
+                text = "🗺️ CAMPAIGN MODE",
+                onClick = { viewModel.goToCampaign() },
+                modifier = Modifier.fillMaxWidth(0.85f),
+                backgroundColor = Color(0xFFAB47BC),
+                shadowColor = Color(0xFF7B1FA2),
+                fontSize = 18.sp
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             CartoonButton(
                 text = "🤖 VS AI (SINGLE PLAYER)",
@@ -75,10 +94,10 @@ fun MenuScreen(viewModel: ChessViewModel) {
                 modifier = Modifier.fillMaxWidth(0.85f),
                 backgroundColor = Color(0xFFFF9800),
                 shadowColor = Color(0xFFE65100),
-                fontSize = 20.sp
+                fontSize = 18.sp
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             CartoonButton(
                 text = "👥 VS PLAYER (LOCAL 2P)",
@@ -86,10 +105,21 @@ fun MenuScreen(viewModel: ChessViewModel) {
                 modifier = Modifier.fillMaxWidth(0.85f),
                 backgroundColor = Color(0xFF4CAF50),
                 shadowColor = Color(0xFF2E7D32),
-                fontSize = 20.sp
+                fontSize = 18.sp
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            CartoonButton(
+                text = "🏆 ACHIEVEMENTS",
+                onClick = { viewModel.goToAchievements() },
+                modifier = Modifier.fillMaxWidth(0.85f),
+                backgroundColor = Color(0xFFFFB300),
+                shadowColor = Color(0xFFC67C00),
+                fontSize = 18.sp
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             CartoonButton(
                 text = "📖 RULES & TUTORIAL",
@@ -97,7 +127,7 @@ fun MenuScreen(viewModel: ChessViewModel) {
                 modifier = Modifier.fillMaxWidth(0.85f),
                 backgroundColor = Color(0xFF0288D1),
                 shadowColor = Color(0xFF01579B),
-                fontSize = 18.sp
+                fontSize = 16.sp
             )
         }
     }
@@ -589,5 +619,199 @@ fun CartoonButton(
             color = textColor,
             textAlign = TextAlign.Center
         )
+    }
+}
+
+@Composable
+fun CampaignScreen(viewModel: ChessViewModel) {
+    val scrollState = rememberScrollState()
+    val levels = viewModel.campaignManager.levels
+    val totalStars = viewModel.campaignManager.getTotalStars()
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Image(
+            painter = painterResource(id = R.drawable.chess_bg),
+            contentDescription = "Background",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.25f)))
+
+        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text("Campaign Mode", fontSize = 24.sp, fontWeight = FontWeight.Black, color = Color(0xFFFFD700))
+                    Text("Total Stars: ⭐ $totalStars / 30", fontSize = 14.sp, color = Color.White)
+                }
+                CartoonButton(
+                    text = "🏠 Menu",
+                    onClick = { viewModel.backToMenu() },
+                    backgroundColor = Color(0xFF0288D1),
+                    shadowColor = Color(0xFF01579B),
+                    fontSize = 14.sp
+                )
+            }
+
+            Column(
+                modifier = Modifier.weight(1f).verticalScroll(scrollState),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                levels.forEach { lvl ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = if (lvl.isUnlocked) Color(0xFF2C2C2C).copy(alpha = 0.9f) else Color(0xFF1A1A1A).copy(alpha = 0.8f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Lvl ${lvl.levelNumber}: ${lvl.title}",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (lvl.isUnlocked) Color(0xFFFFD700) else Color.Gray
+                                )
+                                Text(
+                                    text = lvl.description,
+                                    fontSize = 13.sp,
+                                    color = Color.LightGray,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                                Text(
+                                    text = "Stars: " + "⭐".repeat(lvl.starsEarned) + "☆".repeat(3 - lvl.starsEarned),
+                                    fontSize = 14.sp,
+                                    color = Color(0xFFFFB300),
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
+                            CartoonButton(
+                                text = if (lvl.isUnlocked) "▶ PLAY" else "🔒 LOCKED",
+                                onClick = { if (lvl.isUnlocked) viewModel.startCampaignLevel(lvl) },
+                                backgroundColor = if (lvl.isUnlocked) Color(0xFF4CAF50) else Color(0xFF546E7A),
+                                shadowColor = if (lvl.isUnlocked) Color(0xFF2E7D32) else Color(0xFF37474F),
+                                enabled = lvl.isUnlocked,
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun AchievementsScreen(viewModel: ChessViewModel) {
+    val scrollState = rememberScrollState()
+    val achievements = viewModel.achievementManager.achievements
+    val unlockedCount = viewModel.achievementManager.getUnlockedCount()
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Image(
+            painter = painterResource(id = R.drawable.chess_bg),
+            contentDescription = "Background",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.25f)))
+
+        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text("Achievements", fontSize = 24.sp, fontWeight = FontWeight.Black, color = Color(0xFFFFD700))
+                    Text("Unlocked: $unlockedCount / 30", fontSize = 14.sp, color = Color.White)
+                }
+                CartoonButton(
+                    text = "🏠 Menu",
+                    onClick = { viewModel.backToMenu() },
+                    backgroundColor = Color(0xFF0288D1),
+                    shadowColor = Color(0xFF01579B),
+                    fontSize = 14.sp
+                )
+            }
+
+            Column(
+                modifier = Modifier.weight(1f).verticalScroll(scrollState),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                achievements.forEach { ach ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (ach.isUnlocked) Color(0xFF1B5E20).copy(alpha = 0.85f) else Color(0xFF2C2C2C).copy(alpha = 0.85f)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(14.dp).fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(text = ach.icon, fontSize = 32.sp, modifier = Modifier.padding(end = 12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = ach.title,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (ach.isUnlocked) Color(0xFFFFD700) else Color.White
+                                )
+                                Text(
+                                    text = ach.description,
+                                    fontSize = 13.sp,
+                                    color = Color.LightGray,
+                                    modifier = Modifier.padding(top = 2.dp)
+                                )
+                                if (ach.maxProgress > 1) {
+                                    Text(
+                                        text = "Progress: ${ach.currentProgress} / ${ach.maxProgress}",
+                                        fontSize = 12.sp,
+                                        color = Color(0xFF81D4FA),
+                                        modifier = Modifier.padding(top = 2.dp)
+                                    )
+                                }
+                            }
+                            if (ach.isUnlocked) {
+                                Text("✅ UNLOCKED", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFFD700))
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun AchievementToast(achievement: Achievement, onDismiss: () -> Unit) {
+    Box(
+        modifier = Modifier.fillMaxSize().padding(top = 20.dp),
+        contentAlignment = Alignment.TopCenter
+    ) {
+        Card(
+            modifier = Modifier.fillMaxWidth(0.9f).clickable { onDismiss() },
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFD700))
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = achievement.icon, fontSize = 36.sp, modifier = Modifier.padding(end = 12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("🏆 ACHIEVEMENT UNLOCKED!", fontSize = 12.sp, fontWeight = FontWeight.Black, color = Color(0xFF3E2723))
+                    Text(achievement.title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                    Text(achievement.description, fontSize = 13.sp, color = Color(0xFF4E342E))
+                }
+            }
+        }
     }
 }
