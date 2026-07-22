@@ -292,13 +292,15 @@ fun GameScreen(viewModel: ChessViewModel) {
                         shadowColor = Color(0xFFE65100),
                         fontSize = 14.sp
                     )
-                    CartoonButton(
-                        text = "💡 Hint",
-                        onClick = { viewModel.requestHint() },
-                        backgroundColor = Color(0xFF00ACC1),
-                        shadowColor = Color(0xFF00838F),
-                        fontSize = 14.sp
-                    )
+                    if (gameMode == GameMode.PVAI) {
+                        CartoonButton(
+                            text = "💡 Hint",
+                            onClick = { viewModel.requestHint() },
+                            backgroundColor = Color(0xFF00ACC1),
+                            shadowColor = Color(0xFF00838F),
+                            fontSize = 14.sp
+                        )
+                    }
                 }
             }
 
