@@ -24,11 +24,12 @@ class OnlineGameRepository {
         return (1..6).map { chars.random() }.joinToString("")
     }
 
-    fun createGame(gameId: String, hostColor: PieceColor, onCreated: (Boolean, String?) -> Unit) {
+    fun createGame(gameId: String, hostColor: PieceColor, isPowerUpMode: Boolean, onCreated: (Boolean, String?) -> Unit) {
         currentGameId = gameId
         val gameData = mapOf(
             "status" to "waiting",
             "hostColor" to hostColor.name,
+            "isPowerUpMode" to isPowerUpMode,
             "createdAt" to System.currentTimeMillis()
         )
 
@@ -42,37 +43,38 @@ class OnlineGameRepository {
         }
     }
 
-    fun joinGame(gameId: String, onJoined: (Boolean, PieceColor?) -> Unit) {
+    fun joinGame(gameId: String, onJoined: (Boolean, PieceColor?, Boolean) -> Unit) {
         currentGameId = gameId
         gamesRef.child(gameId).addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (!snapshot.exists()) {
-                    onJoined(false, null)
+                    onJoined(false, null, false)
                     return
                 }
 
                 val status = snapshot.child("status").getValue(String::class.java)
                 if (status != "waiting") {
-                    onJoined(false, null)
+                    onJoined(false, null, false)
                     return
                 }
 
                 val hostColorStr = snapshot.child("hostColor").getValue(String::class.java) ?: "WHITE"
                 val hostColor = PieceColor.valueOf(hostColorStr)
                 val guestColor = hostColor.opposite()
+                val isPowerUpMode = snapshot.child("isPowerUpMode").getValue(Boolean::class.java) ?: false
 
                 // Mark game active
                 gamesRef.child(gameId).child("status").setValue("active").addOnCompleteListener { task ->
                     if (task.isSuccessful) {
-                        onJoined(true, guestColor)
+                        onJoined(true, guestColor, isPowerUpMode)
                     } else {
-                        onJoined(false, null)
+                        onJoined(false, null, false)
                     }
                 }
             }
 
             override fun onCancelled(error: DatabaseError) {
-                onJoined(false, null)
+                onJoined(false, null, false)
             }
         })
     }

@@ -22,7 +22,7 @@ import com.example.chessapp.domain.PieceColor
 
 @Composable
 fun OnlineLobbyScreen(
-    onHostGame: (PieceColor) -> Unit,
+    onHostGame: (PieceColor, Boolean) -> Unit,
     onJoinGame: (String) -> Unit,
     onBack: () -> Unit,
     roomCode: String?,
@@ -31,6 +31,7 @@ fun OnlineLobbyScreen(
 ) {
     var joinCodeInput by remember { mutableStateOf("") }
     var selectedHostColor by remember { mutableStateOf(PieceColor.WHITE) }
+    var isPowerUpSelected by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Image(
@@ -135,13 +136,32 @@ fun OnlineLobbyScreen(
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Mode:", color = Color.White, fontWeight = FontWeight.SemiBold)
+                            FilterChip(
+                                selected = !isPowerUpSelected,
+                                onClick = { isPowerUpSelected = false },
+                                label = { Text("Standard") }
+                            )
+                            FilterChip(
+                                selected = isPowerUpSelected,
+                                onClick = { isPowerUpSelected = true },
+                                label = { Text("⚡ Power-Up") }
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
 
                         CartoonButton(
-                            text = "🚀 Create Room",
-                            onClick = { onHostGame(selectedHostColor) },
-                            backgroundColor = Color(0xFF4CAF50),
-                            shadowColor = Color(0xFF2E7D32)
+                            text = if (isPowerUpSelected) "⚡ Create Power-Up Room" else "🚀 Create Room",
+                            onClick = { onHostGame(selectedHostColor, isPowerUpSelected) },
+                            backgroundColor = if (isPowerUpSelected) Color(0xFFE91E63) else Color(0xFF4CAF50),
+                            shadowColor = if (isPowerUpSelected) Color(0xFFAD1457) else Color(0xFF2E7D32)
                         )
                     }
                 }

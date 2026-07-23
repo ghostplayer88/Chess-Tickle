@@ -355,19 +355,19 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
         _currentScreen.value = AppScreen.ONLINE_LOBBY
     }
 
-    fun hostOnlineGame(hostColor: PieceColor) {
+    fun hostOnlineGame(hostColor: PieceColor, isPowerUpMode: Boolean = false) {
         _onlineErrorMessage.value = null
         val code = onlineRepository.generateRoomCode()
         _onlineRoomCode.value = code
         _myOnlineColor.value = hostColor
         _isWaitingForGuest.value = true
 
-        onlineRepository.createGame(code, hostColor) { success, errorMsg ->
+        onlineRepository.createGame(code, hostColor, isPowerUpMode) { success, errorMsg ->
             if (success) {
                 onlineRepository.listenForStatus(code) { status ->
                     if (status == "active" && _isWaitingForGuest.value) {
                         _isWaitingForGuest.value = false
-                        startOnlineMatch(code, hostColor)
+                        startOnlineMatch(code, hostColor, isPowerUpMode)
                     }
                 }
             } else {
@@ -380,21 +380,21 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
     fun joinOnlineGame(code: String) {
         _onlineErrorMessage.value = null
         val formattedCode = code.uppercase().trim()
-        onlineRepository.joinGame(formattedCode) { success, guestColor ->
+        onlineRepository.joinGame(formattedCode) { success, guestColor, isPowerUpMode ->
             if (success && guestColor != null) {
                 _onlineRoomCode.value = formattedCode
                 _myOnlineColor.value = guestColor
                 _isWaitingForGuest.value = false
-                startOnlineMatch(formattedCode, guestColor)
+                startOnlineMatch(formattedCode, guestColor, isPowerUpMode)
             } else {
                 _onlineErrorMessage.value = "Invalid room code or game is already active."
             }
         }
     }
 
-    private fun startOnlineMatch(gameId: String, myColor: PieceColor) {
+    private fun startOnlineMatch(gameId: String, myColor: PieceColor, isPowerUpMode: Boolean = false) {
         game = ChessGame()
-        _gameMode.value = GameMode.ONLINE
+        _gameMode.value = if (isPowerUpMode) GameMode.POWERUP_ONLINE else GameMode.ONLINE
         _aiColor.value = myColor.opposite() // Not used for AI, but set for consistency
         _promotionPending.value = null
         _hintMove.value = null

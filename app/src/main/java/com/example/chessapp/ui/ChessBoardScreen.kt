@@ -65,7 +65,7 @@ fun ChessAppScreen(viewModel: ChessViewModel = viewModel()) {
                 val isWaiting by viewModel.isWaitingForGuest.collectAsState()
                 val errorMsg by viewModel.onlineErrorMessage.collectAsState()
                 OnlineLobbyScreen(
-                    onHostGame = { color -> viewModel.hostOnlineGame(color) },
+                    onHostGame = { color, isPowerUp -> viewModel.hostOnlineGame(color, isPowerUp) },
                     onJoinGame = { code -> viewModel.joinOnlineGame(code) },
                     onBack = { viewModel.leaveOnlineLobby() },
                     roomCode = roomCode,
@@ -458,31 +458,7 @@ fun GameScreen(viewModel: ChessViewModel) {
                         Text("AI is thinking...", color = Color.LightGray, modifier = Modifier.padding(bottom = 8.dp))
                     }
 
-                    val selectedPowerUp by viewModel.selectedPowerUp.collectAsState()
-                    val isPowerUpMode = gameMode == GameMode.POWERUP_PVAI || gameMode == GameMode.POWERUP_PVP || gameMode == GameMode.POWERUP_ONLINE
-
-                    if (isPowerUpMode) {
-                        Card(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF4A148C).copy(alpha = 0.9f))
-                        ) {
-                            Column(modifier = Modifier.padding(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("⚡ Power-Ups (Tap to Arm, then tap target square)", fontSize = 11.sp, color = Color(0xFFFFD700), fontWeight = FontWeight.Bold)
-                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
-                                    PowerUpType.values().forEach { p ->
-                                        val isSelected = selectedPowerUp == p
-                                        CartoonButton(
-                                            text = "${p.icon} ${p.displayName}",
-                                            onClick = { viewModel.selectPowerUp(p) },
-                                            backgroundColor = if (isSelected) Color(0xFFFFD700) else Color(0xFF7B1FA2),
-                                            shadowColor = Color(0xFF4A148C),
-                                            fontSize = 10.sp
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    PowerUpActionBar(viewModel = viewModel, gameMode = gameMode)
 
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         CartoonButton(
@@ -608,8 +584,10 @@ fun GameScreen(viewModel: ChessViewModel) {
                 if (isAiThinking) {
                     Text("AI is thinking...", color = Color.LightGray, modifier = Modifier.padding(bottom = 4.dp))
                 } else {
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
+
+                PowerUpActionBar(viewModel = viewModel, gameMode = gameMode)
 
                 ChessBoardView(
                     board = board,
@@ -649,6 +627,45 @@ fun GameScreen(viewModel: ChessViewModel) {
 
         if (promotionPending != null && isLandscape) {
             PromotionDialog(onPromotionSelected = { type -> viewModel.onPromotionSelected(type) })
+        }
+    }
+}
+
+@Composable
+fun PowerUpActionBar(viewModel: ChessViewModel, gameMode: GameMode) {
+    val selectedPowerUp by viewModel.selectedPowerUp.collectAsState()
+    val isPowerUpMode = gameMode == GameMode.POWERUP_PVAI || gameMode == GameMode.POWERUP_PVP || gameMode == GameMode.POWERUP_ONLINE
+
+    if (isPowerUpMode) {
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF4A148C).copy(alpha = 0.95f)),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+        ) {
+            Column(modifier = Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "⚡ Power-Ups (Tap icon to Arm, then tap piece/square)",
+                    fontSize = 11.sp,
+                    color = Color(0xFFFFD700),
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    horizontalArrangement = Arrangement.SpaceAround,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    PowerUpType.values().forEach { p ->
+                        val isSelected = selectedPowerUp == p
+                        CartoonButton(
+                            text = "${p.icon} ${p.displayName}",
+                            onClick = { viewModel.selectPowerUp(p) },
+                            backgroundColor = if (isSelected) Color(0xFFFFD700) else Color(0xFF7B1FA2),
+                            shadowColor = Color(0xFF4A148C),
+                            fontSize = 10.sp
+                        )
+                    }
+                }
+            }
         }
     }
 }
