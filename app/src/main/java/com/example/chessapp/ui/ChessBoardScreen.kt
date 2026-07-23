@@ -54,6 +54,19 @@ fun ChessAppScreen(viewModel: ChessViewModel = viewModel()) {
             AppScreen.TUTORIAL -> TutorialScreen(viewModel)
             AppScreen.CAMPAIGN -> CampaignScreen(viewModel)
             AppScreen.ACHIEVEMENTS -> AchievementsScreen(viewModel)
+            AppScreen.ONLINE_LOBBY -> {
+                val roomCode by viewModel.onlineRoomCode.collectAsState()
+                val isWaiting by viewModel.isWaitingForGuest.collectAsState()
+                val errorMsg by viewModel.onlineErrorMessage.collectAsState()
+                OnlineLobbyScreen(
+                    onHostGame = { color -> viewModel.hostOnlineGame(color) },
+                    onJoinGame = { code -> viewModel.joinOnlineGame(code) },
+                    onBack = { viewModel.leaveOnlineLobby() },
+                    roomCode = roomCode,
+                    isWaitingForGuest = isWaiting,
+                    errorMessage = errorMsg
+                )
+            }
         }
 
         if (unlockedToast != null) {
@@ -114,6 +127,17 @@ fun MenuScreen(viewModel: ChessViewModel) {
                 modifier = Modifier.fillMaxWidth(0.85f),
                 backgroundColor = Color(0xFF4CAF50),
                 shadowColor = Color(0xFF2E7D32),
+                fontSize = 18.sp
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            CartoonButton(
+                text = "🌐 ONLINE 1v1 MULTIPLAYER",
+                onClick = { viewModel.navigateToOnlineLobby() },
+                modifier = Modifier.fillMaxWidth(0.85f),
+                backgroundColor = Color(0xFF00ACC1),
+                shadowColor = Color(0xFF00838F),
                 fontSize = 18.sp
             )
 
@@ -290,8 +314,9 @@ fun GameScreen(viewModel: ChessViewModel) {
     val activeCampaignLevel by viewModel.activeCampaignLevel.collectAsState()
     val hintMove by viewModel.hintMove.collectAsState()
     val moveCount by viewModel.moveCount.collectAsState()
+    val myOnlineColor by viewModel.myOnlineColor.collectAsState()
     
-    val userColor = if (gameMode == GameMode.PVAI) aiColor.opposite() else PieceColor.WHITE
+    val userColor = if (gameMode == GameMode.ONLINE) myOnlineColor else if (gameMode == GameMode.PVAI) aiColor.opposite() else PieceColor.WHITE
 
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE

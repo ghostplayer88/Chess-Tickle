@@ -83,7 +83,10 @@ dependencies {
   implementation(libs.androidx.navigation3.runtime)
   implementation(libs.androidx.lifecycle.viewmodel.navigation3)
 
-  // Firebase
+  // Firebase & Auth
   implementation(platform(libs.firebase.bom))
   implementation(libs.firebase.analytics)
+  implementation(libs.firebase.database)
+  implementation(libs.firebase.auth)
+  implementation(libs.play.services.auth)
 }

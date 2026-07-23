@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "58444918585",
+    "firebase_url": "https://chess-tickle-default-rtdb.europe-west1.firebasedatabase.app",
     "project_id": "chess-tickle",
     "storage_bucket": "chess-tickle.firebasestorage.app"
   },
@@ -12,7 +13,20 @@
           "package_name": "com.Ghostind.Chesstickle"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "58444918585-1u6vq8stkb5des8r979t0vbajv8mohic.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.Ghostind.Chesstickle",
+            "certificate_hash": "d8244201a5fce25e0b765fa77aff9d33f6399bc4"
+          }
+        },
+        {
+          "client_id": "58444918585-k6unq7eo95rvn1k7cruntvha7b7nad6k.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBDXDku3D14CLUqseu5U1ImxgzQUVRLv_E"
@@ -20,7 +34,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "58444918585-k6unq7eo95rvn1k7cruntvha7b7nad6k.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

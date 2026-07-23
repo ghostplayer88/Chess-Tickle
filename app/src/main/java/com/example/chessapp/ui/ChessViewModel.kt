@@ -11,9 +11,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import androidx.compose.ui.graphics.Color
 
-enum class GameMode { PVP, PVAI }
+enum class GameMode { PVP, PVAI, ONLINE }
 enum class AiDifficulty(val depth: Int) { EASY(1), MEDIUM(2), HARD(3) }
-enum class AppScreen { MENU, MODE_SELECTION, GAME, TUTORIAL, CAMPAIGN, ACHIEVEMENTS }
+enum class AppScreen { MENU, MODE_SELECTION, GAME, TUTORIAL, CAMPAIGN, ACHIEVEMENTS, ONLINE_LOBBY }
 enum class BoardTheme(val displayName: String, val lightColor: Color, val darkColor: Color) {
     WOOD("Classic Wood", Color(0xFFF0D9B5), Color(0xFFB58863)),
     EMERALD("Emerald", Color(0xFFE8EDF9), Color(0xFF769656)),
@@ -27,6 +27,10 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
     val achievementManager = AchievementManager(application)
     val campaignManager = CampaignManager(application)
     private val soundManager = SoundManager()
+    val onlineRepository = OnlineGameRepository()
+    val authManager = AuthManager(application)
+
+    val currentUser: StateFlow<FirebaseUser?> = authManager.currentUser
 
     private val _currentScreen = MutableStateFlow(AppScreen.MENU)
     val currentScreen: StateFlow<AppScreen> = _currentScreen.asStateFlow()
@@ -75,6 +79,18 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _moveCount = MutableStateFlow(0)
     val moveCount: StateFlow<Int> = _moveCount.asStateFlow()
+
+    private val _onlineRoomCode = MutableStateFlow<String?>(null)
+    val onlineRoomCode: StateFlow<String?> = _onlineRoomCode.asStateFlow()
+
+    private val _isWaitingForGuest = MutableStateFlow(false)
+    val isWaitingForGuest: StateFlow<Boolean> = _isWaitingForGuest.asStateFlow()
+
+    private val _onlineErrorMessage = MutableStateFlow<String?>(null)
+    val onlineErrorMessage: StateFlow<String?> = _onlineErrorMessage.asStateFlow()
+
+    private val _myOnlineColor = MutableStateFlow(PieceColor.WHITE)
+    val myOnlineColor: StateFlow<PieceColor> = _myOnlineColor.asStateFlow()
 
     fun setBoardTheme(theme: BoardTheme) {
         _boardTheme.value = theme
@@ -221,6 +237,14 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
         if (game.makeMove(move)) {
             clearSelection()
             updateFlows()
+
+            // If Online mode, push move to Firebase
+            if (_gameMode.value == GameMode.ONLINE && move.piece.color == _myOnlineColor.value) {
+                _onlineRoomCode.value?.let { code ->
+                    onlineRepository.pushMove(code, move)
+                }
+            }
+
             checkAiTurn()
         }
     }
@@ -298,5 +322,82 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
     private fun clearSelection() {
         _selectedPosition.value = null
         _legalMoves.value = emptyList()
+    }
+
+    // ─── ONLINE MULTIPLAYER METHODS ──────────────────────────────────────────────
+
+    fun navigateToOnlineLobby() {
+        _onlineErrorMessage.value = null
+        _isWaitingForGuest.value = false
+        _currentScreen.value = AppScreen.ONLINE_LOBBY
+    }
+
+    fun hostOnlineGame(hostColor: PieceColor) {
+        _onlineErrorMessage.value = null
+        val code = onlineRepository.generateRoomCode()
+        _onlineRoomCode.value = code
+        _myOnlineColor.value = hostColor
+        _isWaitingForGuest.value = true
+
+        onlineRepository.createGame(code, hostColor) { success ->
+            if (success) {
+                onlineRepository.listenForStatus(code) { status ->
+                    if (status == "active" && _isWaitingForGuest.value) {
+                        _isWaitingForGuest.value = false
+                        startOnlineMatch(code, hostColor)
+                    }
+                }
+            } else {
+                _isWaitingForGuest.value = false
+                _onlineErrorMessage.value = "Failed to create room. Please try again."
+            }
+        }
+    }
+
+    fun joinOnlineGame(code: String) {
+        _onlineErrorMessage.value = null
+        val formattedCode = code.uppercase().trim()
+        onlineRepository.joinGame(formattedCode) { success, guestColor ->
+            if (success && guestColor != null) {
+                _onlineRoomCode.value = formattedCode
+                _myOnlineColor.value = guestColor
+                _isWaitingForGuest.value = false
+                startOnlineMatch(formattedCode, guestColor)
+            } else {
+                _onlineErrorMessage.value = "Invalid room code or game is already active."
+            }
+        }
+    }
+
+    private fun startOnlineMatch(gameId: String, myColor: PieceColor) {
+        game = ChessGame()
+        _gameMode.value = GameMode.ONLINE
+        _aiColor.value = myColor.opposite() // Not used for AI, but set for consistency
+        _promotionPending.value = null
+        _hintMove.value = null
+        clearSelection()
+        updateFlows()
+        _currentScreen.value = AppScreen.GAME
+
+        // Listen for opponent's incoming moves
+        onlineRepository.listenForMoves(gameId) { dto ->
+            val move = dto.toMove(game.board.value)
+            if (move != null && move.piece.color != _myOnlineColor.value) {
+                viewModelScope.launch {
+                    if (game.makeMove(move)) {
+                        soundManager.playMoveSound()
+                        updateFlows()
+                    }
+                }
+            }
+        }
+    }
+
+    fun leaveOnlineLobby() {
+        onlineRepository.cleanup()
+        _onlineRoomCode.value = null
+        _isWaitingForGuest.value = false
+        _onlineErrorMessage.value = null
+        _currentScreen.value = AppScreen.MENU
     }
 }
