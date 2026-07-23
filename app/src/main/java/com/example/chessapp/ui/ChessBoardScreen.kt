@@ -10,6 +10,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Text
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.painterResource
@@ -58,6 +59,7 @@ fun ChessAppScreen(viewModel: ChessViewModel = viewModel()) {
             AppScreen.TUTORIAL -> TutorialScreen(viewModel)
             AppScreen.CAMPAIGN -> CampaignScreen(viewModel)
             AppScreen.ACHIEVEMENTS -> AchievementsScreen(viewModel)
+            AppScreen.SETTINGS -> SettingsScreen(viewModel, onBack = { viewModel.backToMenu() })
             AppScreen.ONLINE_LOBBY -> {
                 val roomCode by viewModel.onlineRoomCode.collectAsState()
                 val isWaiting by viewModel.isWaitingForGuest.collectAsState()
@@ -116,46 +118,46 @@ fun MenuScreen(viewModel: ChessViewModel) {
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
-            // User Profile / Sign-in Status
-            if (currentUser != null) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(0.85f).padding(bottom = 16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E2746).copy(alpha = 0.9f))
+            val selectedAvatarId by viewModel.selectedAvatarId.collectAsState()
+            val currentAvatar = AVATAR_OPTIONS.find { it.id == selectedAvatarId }?.emoji ?: "♟️"
+
+            // User Profile / Settings Status Card
+            Card(
+                modifier = Modifier.fillMaxWidth(0.85f).padding(bottom = 16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1E2746).copy(alpha = 0.9f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "👤 ${viewModel.authManager.getUserDisplayName()}",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            modifier = Modifier.weight(1f)
-                        )
-                        CartoonButton(
-                            text = "Sign Out",
-                            onClick = { viewModel.authManager.signOut() },
-                            backgroundColor = Color(0xFFE53935),
-                            shadowColor = Color(0xFFB71C1C),
-                            fontSize = 12.sp
-                        )
-                    }
+                    Text(
+                        text = "$currentAvatar ${viewModel.authManager.getUserDisplayName()}",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        modifier = Modifier.weight(1f)
+                    )
+                    CartoonButton(
+                        text = "⚙️ Settings",
+                        onClick = { viewModel.goToSettings() },
+                        backgroundColor = Color(0xFF607D8B),
+                        shadowColor = Color(0xFF37474F),
+                        fontSize = 12.sp
+                    )
                 }
-            } else {
-                CartoonButton(
-                    text = "🌐 SIGN IN WITH GOOGLE",
-                    onClick = {
-                        val intent = viewModel.authManager.getSignInIntent()
-                        googleSignInLauncher.launch(intent)
-                    },
-                    modifier = Modifier.fillMaxWidth(0.85f).padding(bottom = 16.dp),
-                    backgroundColor = Color(0xFF4285F4),
-                    shadowColor = Color(0xFF1A73E8),
-                    fontSize = 16.sp
-                )
             }
+
+            CartoonButton(
+                text = "⚡ POWER-UP CHESS MODE",
+                onClick = { viewModel.startGame(GameMode.POWERUP_PVAI, PieceColor.BLACK, AiDifficulty.MEDIUM) },
+                modifier = Modifier.fillMaxWidth(0.85f),
+                backgroundColor = Color(0xFFE91E63),
+                shadowColor = Color(0xFFAD1457),
+                fontSize = 18.sp
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             CartoonButton(
                 text = "🗺️ CAMPAIGN MODE",
@@ -456,6 +458,32 @@ fun GameScreen(viewModel: ChessViewModel) {
                         Text("AI is thinking...", color = Color.LightGray, modifier = Modifier.padding(bottom = 8.dp))
                     }
 
+                    val selectedPowerUp by viewModel.selectedPowerUp.collectAsState()
+                    val isPowerUpMode = gameMode == GameMode.POWERUP_PVAI || gameMode == GameMode.POWERUP_PVP || gameMode == GameMode.POWERUP_ONLINE
+
+                    if (isPowerUpMode) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF4A148C).copy(alpha = 0.9f))
+                        ) {
+                            Column(modifier = Modifier.padding(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("⚡ Power-Ups (Tap to Arm, then tap target square)", fontSize = 11.sp, color = Color(0xFFFFD700), fontWeight = FontWeight.Bold)
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
+                                    PowerUpType.values().forEach { p ->
+                                        val isSelected = selectedPowerUp == p
+                                        CartoonButton(
+                                            text = "${p.icon} ${p.displayName}",
+                                            onClick = { viewModel.selectPowerUp(p) },
+                                            backgroundColor = if (isSelected) Color(0xFFFFD700) else Color(0xFF7B1FA2),
+                                            shadowColor = Color(0xFF4A148C),
+                                            fontSize = 10.sp
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         CartoonButton(
                             text = "↩️ Undo",
@@ -464,7 +492,7 @@ fun GameScreen(viewModel: ChessViewModel) {
                             shadowColor = Color(0xFFE65100),
                             fontSize = 13.sp
                         )
-                        if (gameMode == GameMode.PVAI) {
+                        if (gameMode == GameMode.PVAI || gameMode == GameMode.POWERUP_PVAI) {
                             CartoonButton(
                                 text = "💡 Hint",
                                 onClick = { viewModel.requestHint() },

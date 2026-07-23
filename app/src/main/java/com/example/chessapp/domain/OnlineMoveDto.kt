@@ -7,7 +7,10 @@ data class OnlineMoveDto(
     val toCol: Int = 0,
     val pieceType: String = "",
     val pieceColor: String = "",
-    val promotionType: String? = null
+    val promotionType: String? = null,
+    val powerUpType: String? = null,
+    val targetRow: Int = -1,
+    val targetCol: Int = -1
 ) {
     fun toMove(board: ChessBoard): Move? {
         val fromPos = Position(fromRow, fromCol)

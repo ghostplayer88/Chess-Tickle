@@ -43,6 +43,12 @@ class ChessBoard(val pieces: Map<Position, Piece>) {
         return ChessBoard(newPieces)
     }
 
+    fun removePiece(position: Position): ChessBoard {
+        val newPieces = pieces.toMutableMap()
+        newPieces.remove(position)
+        return ChessBoard(newPieces)
+    }
+
     companion object {
         fun initial(): ChessBoard {
             val pieces = mutableMapOf<Position, Piece>()

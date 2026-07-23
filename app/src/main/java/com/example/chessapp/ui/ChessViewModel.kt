@@ -12,9 +12,9 @@ import kotlinx.coroutines.delay
 import androidx.compose.ui.graphics.Color
 import com.google.firebase.auth.FirebaseUser
 
-enum class GameMode { PVP, PVAI, ONLINE }
+enum class GameMode { PVP, PVAI, ONLINE, POWERUP_PVP, POWERUP_PVAI, POWERUP_ONLINE }
 enum class AiDifficulty(val depth: Int) { EASY(1), MEDIUM(2), HARD(3) }
-enum class AppScreen { MENU, MODE_SELECTION, GAME, TUTORIAL, CAMPAIGN, ACHIEVEMENTS, ONLINE_LOBBY }
+enum class AppScreen { MENU, MODE_SELECTION, GAME, TUTORIAL, CAMPAIGN, ACHIEVEMENTS, ONLINE_LOBBY, SETTINGS }
 enum class BoardTheme(val displayName: String, val lightColor: Color, val darkColor: Color) {
     WOOD("Classic Wood", Color(0xFFF0D9B5), Color(0xFFB58863)),
     EMERALD("Emerald", Color(0xFFE8EDF9), Color(0xFF769656)),
@@ -30,6 +30,8 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
     private val soundManager = SoundManager()
     val onlineRepository = OnlineGameRepository()
     val authManager = AuthManager(application)
+
+    private val settingsPrefs = application.getSharedPreferences("chess_settings_prefs", android.content.Context.MODE_PRIVATE)
 
     val currentUser: StateFlow<FirebaseUser?> = authManager.currentUser
 
@@ -92,6 +94,15 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _myOnlineColor = MutableStateFlow(PieceColor.WHITE)
     val myOnlineColor: StateFlow<PieceColor> = _myOnlineColor.asStateFlow()
+
+    private val _soundVolume = MutableStateFlow(settingsPrefs.getInt("sound_volume", 80))
+    val soundVolume: StateFlow<Int> = _soundVolume.asStateFlow()
+
+    private val _selectedAvatarId = MutableStateFlow(settingsPrefs.getInt("selected_avatar_id", 1))
+    val selectedAvatarId: StateFlow<Int> = _selectedAvatarId.asStateFlow()
+
+    private val _selectedPowerUp = MutableStateFlow<PowerUpType?>(null)
+    val selectedPowerUp: StateFlow<PowerUpType?> = _selectedPowerUp.asStateFlow()
 
     fun setBoardTheme(theme: BoardTheme) {
         _boardTheme.value = theme
@@ -178,6 +189,11 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onSquareClicked(position: Position) {
         if (_promotionPending.value != null || _isAiThinking.value) return 
+
+        if (_selectedPowerUp.value != null) {
+            activatePowerUpOnSquare(position)
+            return
+        }
 
         _hintMove.value = null
         val selected = _selectedPosition.value
@@ -400,5 +416,40 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
         _isWaitingForGuest.value = false
         _onlineErrorMessage.value = null
         _currentScreen.value = AppScreen.MENU
+    }
+
+    // ─── SETTINGS & POWER-UP METHODS ─────────────────────────────────────────────
+
+    fun goToSettings() {
+        _currentScreen.value = AppScreen.SETTINGS
+    }
+
+    fun updateVolume(volume: Int) {
+        _soundVolume.value = volume
+        settingsPrefs.edit().putInt("sound_volume", volume).apply()
+        soundManager.setVolume(volume)
+    }
+
+    fun selectAvatar(avatarId: Int) {
+        _selectedAvatarId.value = avatarId
+        settingsPrefs.edit().putInt("selected_avatar_id", avatarId).apply()
+    }
+
+    fun selectPowerUp(type: PowerUpType) {
+        if (_selectedPowerUp.value == type) {
+            _selectedPowerUp.value = null
+        } else {
+            _selectedPowerUp.value = type
+        }
+    }
+
+    fun activatePowerUpOnSquare(pos: Position) {
+        val type = _selectedPowerUp.value ?: return
+        val success = game.activatePowerUp(type, pos, currentTurn.value)
+        if (success) {
+            soundManager.playPowerUpSound()
+            _selectedPowerUp.value = null
+            updateFlows()
+        }
     }
 }

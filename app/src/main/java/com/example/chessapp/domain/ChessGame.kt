@@ -29,6 +29,11 @@ class ChessGame {
     private var halfMoveClock = 0
     private val positionHistory = mutableMapOf<String, Int>()
 
+    val activeEffects = mutableListOf<ActivePowerUpEffect>()
+    val whiteInventory = PowerUpInventory()
+    val blackInventory = PowerUpInventory()
+    var isExtraTurnActive = false
+
     fun copy(): ChessGame {
         val newGame = ChessGame()
         newGame._board.value = this.board.value
@@ -49,22 +54,84 @@ class ChessGame {
 
         historyStack.add(GameSnapshot(_board.value, _currentTurn.value, _status.value, ArrayList(moveHistory)))
 
-        // Reset halfMoveClock on Pawn move or Capture
-        if (actualMove.piece.type == PieceType.PAWN || actualMove.capturedPiece != null) {
-            halfMoveClock = 0
-        } else {
-            halfMoveClock++
+        // Handle Divine Shield capture prevention
+        if (actualMove.capturedPiece != null) {
+            val isShielded = activeEffects.any { it.type == PowerUpType.DIVINE_SHIELD && it.targetPosition == actualMove.to }
+            if (isShielded) {
+                // Cannot capture a shielded piece
+                return false
+            }
+        }
+
+        // Handle Frost Freeze check
+        val isFrozen = activeEffects.any { it.type == PowerUpType.FROST_FREEZE && it.targetPosition == actualMove.from }
+        if (isFrozen) {
+            return false
         }
 
         _board.value = _board.value.applyMove(actualMove)
+
+        // Handle Bomb Pawn explosion: if captured piece was a Bomb Pawn, destroy the attacker too!
+        if (actualMove.capturedPiece != null) {
+            val isBombPawn = activeEffects.any { it.type == PowerUpType.BOMB_PAWN && it.targetPosition == actualMove.to }
+            if (isBombPawn) {
+                _board.value = _board.value.removePiece(actualMove.to)
+            }
+        }
+
         moveHistory.add(actualMove)
-        _currentTurn.value = _currentTurn.value.opposite()
+
+        // Decrement effect turns
+        activeEffects.forEach { it.turnsRemaining-- }
+        activeEffects.removeAll { it.turnsRemaining <= 0 }
+
+        // Double Step: don't flip turn if double step is active
+        if (isExtraTurnActive) {
+            isExtraTurnActive = false
+        } else {
+            _currentTurn.value = _currentTurn.value.opposite()
+        }
 
         // Track Threefold Repetition
         val posKey = getPositionKey()
         positionHistory[posKey] = (positionHistory[posKey] ?: 0) + 1
 
         updateGameStatus()
+        return true
+    }
+
+    fun activatePowerUp(type: PowerUpType, targetPos: Position, color: PieceColor): Boolean {
+        if (_currentTurn.value != color) return false
+        val inventory = if (color == PieceColor.WHITE) whiteInventory else blackInventory
+        if (!inventory.available.contains(type)) return false
+
+        when (type) {
+            PowerUpType.DIVINE_SHIELD -> {
+                val piece = _board.value.getPiece(targetPos) ?: return false
+                if (piece.color != color) return false
+                activeEffects.add(ActivePowerUpEffect(type, targetPos, color, turnsRemaining = 2))
+            }
+            PowerUpType.QUANTUM_LEAP -> {
+                val piece = _board.value.getPiece(targetPos) ?: return false
+                if (piece.color != color) return false
+                activeEffects.add(ActivePowerUpEffect(type, targetPos, color, turnsRemaining = 1))
+            }
+            PowerUpType.BOMB_PAWN -> {
+                val piece = _board.value.getPiece(targetPos) ?: return false
+                if (piece.type != PieceType.PAWN || piece.color != color) return false
+                activeEffects.add(ActivePowerUpEffect(type, targetPos, color, turnsRemaining = 10))
+            }
+            PowerUpType.DOUBLE_STEP -> {
+                isExtraTurnActive = true
+            }
+            PowerUpType.FROST_FREEZE -> {
+                val piece = _board.value.getPiece(targetPos) ?: return false
+                if (piece.color == color) return false // target enemy piece
+                activeEffects.add(ActivePowerUpEffect(type, targetPos, color, turnsRemaining = 2))
+            }
+        }
+
+        inventory.available.remove(type)
         return true
     }
 
@@ -293,6 +360,23 @@ class ChessGame {
     }
 
     private fun updateGameStatus() {
+        // 0. Check if any King has been captured/destroyed
+        val whiteHasKing = _board.value.pieces.values.any { it.type == PieceType.KING && it.color == PieceColor.WHITE }
+        val blackHasKing = _board.value.pieces.values.any { it.type == PieceType.KING && it.color == PieceColor.BLACK }
+
+        if (!whiteHasKing && !blackHasKing) {
+            _status.value = GameStatus.Stalemate
+            return
+        }
+        if (!whiteHasKing) {
+            _status.value = GameStatus.Checkmate(PieceColor.BLACK)
+            return
+        }
+        if (!blackHasKing) {
+            _status.value = GameStatus.Checkmate(PieceColor.WHITE)
+            return
+        }
+
         // 1. FIDE Insufficient material check
         if (isInsufficientMaterial()) {
             _status.value = GameStatus.Stalemate
