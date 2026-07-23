@@ -126,6 +126,32 @@ class OnlineGameRepository {
         gamesRef.child(gameId).child("status").setValue(status)
     }
 
+    private var powerUpListener: ChildEventListener? = null
+
+    fun pushPowerUp(gameId: String, type: PowerUpType, targetPos: Position, color: PieceColor) {
+        val dto = OnlinePowerUpDto(type.name, targetPos.row, targetPos.col, color.name)
+        gamesRef.child(gameId).child("powerups").push().setValue(dto)
+    }
+
+    fun listenForPowerUps(gameId: String, onPowerUpReceived: (OnlinePowerUpDto) -> Unit) {
+        val listener = object : ChildEventListener {
+            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                val dto = snapshot.getValue(OnlinePowerUpDto::class.java)
+                if (dto != null) {
+                    onPowerUpReceived(dto)
+                }
+            }
+
+            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
+            override fun onChildRemoved(snapshot: DataSnapshot) {}
+            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
+            override fun onCancelled(error: DatabaseError) {}
+        }
+
+        powerUpListener = listener
+        gamesRef.child(gameId).child("powerups").addChildEventListener(listener)
+    }
+
     fun cleanup() {
         removeListeners()
         currentGameId = null
@@ -135,7 +161,9 @@ class OnlineGameRepository {
         val gameId = currentGameId ?: return
         moveListener?.let { gamesRef.child(gameId).child("moves").removeEventListener(it) }
         statusListener?.let { gamesRef.child(gameId).child("status").removeEventListener(it) }
+        powerUpListener?.let { gamesRef.child(gameId).child("powerups").removeEventListener(it) }
         moveListener = null
         statusListener = null
+        powerUpListener = null
     }
 }

@@ -42,3 +42,10 @@ data class OnlineMoveDto(
         }
     }
 }
+
+data class OnlinePowerUpDto(
+    val type: String = "",
+    val targetRow: Int = 0,
+    val targetCol: Int = 0,
+    val color: String = ""
+)

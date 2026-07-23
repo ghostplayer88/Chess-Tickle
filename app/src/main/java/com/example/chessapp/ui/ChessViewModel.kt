@@ -494,6 +494,21 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
         }
+
+        // Listen for opponent's incoming power-up activations
+        onlineRepository.listenForPowerUps(gameId) { dto ->
+            if (dto.color != _myOnlineColor.value.name) {
+                viewModelScope.launch {
+                    val pType = try { PowerUpType.valueOf(dto.type) } catch (e: Exception) { null }
+                    val pColor = try { PieceColor.valueOf(dto.color) } catch (e: Exception) { null }
+                    if (pType != null && pColor != null) {
+                        game.activatePowerUp(pType, Position(dto.targetRow, dto.targetCol), pColor)
+                        soundManager.playPowerUpSound()
+                        updateFlows()
+                    }
+                }
+            }
+        }
     }
 
     fun leaveOnlineLobby() {
@@ -523,11 +538,16 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
 
     fun selectPowerUp(type: PowerUpType) {
         if (type == PowerUpType.DOUBLE_STEP) {
-            val success = game.activatePowerUp(type, Position(0, 0), currentTurn.value)
+            val targetPos = Position(0, 0)
+            val color = currentTurn.value
+            val success = game.activatePowerUp(type, targetPos, color)
             if (success) {
                 soundManager.playPowerUpSound()
                 _selectedPowerUp.value = null
                 updateFlows()
+                if (_gameMode.value == GameMode.POWERUP_ONLINE) {
+                    _onlineRoomCode.value?.let { code -> onlineRepository.pushPowerUp(code, type, targetPos, color) }
+                }
             }
             return
         }
@@ -541,11 +561,15 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
 
     fun activatePowerUpOnSquare(pos: Position) {
         val type = _selectedPowerUp.value ?: return
-        val success = game.activatePowerUp(type, pos, currentTurn.value)
+        val color = currentTurn.value
+        val success = game.activatePowerUp(type, pos, color)
         if (success) {
             soundManager.playPowerUpSound()
             _selectedPowerUp.value = null
             updateFlows()
+            if (_gameMode.value == GameMode.POWERUP_ONLINE) {
+                _onlineRoomCode.value?.let { code -> onlineRepository.pushPowerUp(code, type, pos, color) }
+            }
         }
     }
 }
