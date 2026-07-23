@@ -321,8 +321,9 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
             clearSelection()
             updateFlows()
 
-            // If Online mode, push move to Firebase
-            if (_gameMode.value == GameMode.ONLINE && move.piece.color == _myOnlineColor.value) {
+            // If Online mode (Standard or Power-Up), push move to Firebase
+            val isOnlineMode = _gameMode.value == GameMode.ONLINE || _gameMode.value == GameMode.POWERUP_ONLINE
+            if (isOnlineMode && move.piece.color == _myOnlineColor.value) {
                 _onlineRoomCode.value?.let { code ->
                     onlineRepository.pushMove(code, move)
                 }
@@ -428,6 +429,7 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
     // ─── ONLINE MULTIPLAYER METHODS ──────────────────────────────────────────────
 
     fun navigateToOnlineLobby() {
+        authManager.ensureAuthenticated()
         _onlineErrorMessage.value = null
         _isWaitingForGuest.value = false
         _currentScreen.value = AppScreen.ONLINE_LOBBY

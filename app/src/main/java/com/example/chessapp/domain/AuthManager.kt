@@ -36,6 +36,13 @@ class AuthManager(private val context: Context) {
         auth.addAuthStateListener { firebaseAuth ->
             _currentUser.value = firebaseAuth.currentUser
         }
+        ensureAuthenticated()
+    }
+
+    fun ensureAuthenticated() {
+        if (auth.currentUser == null) {
+            auth.signInAnonymously()
+        }
     }
 
     fun getSignInIntent(): Intent {
