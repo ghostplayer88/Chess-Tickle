@@ -190,6 +190,12 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
     fun onSquareClicked(position: Position) {
         if (_promotionPending.value != null || _isAiThinking.value) return 
 
+        // Enforce Strict Online Turn Rule: Cannot move or interact when it's opponent's turn
+        val isOnline = _gameMode.value == GameMode.ONLINE || _gameMode.value == GameMode.POWERUP_ONLINE
+        if (isOnline && _currentTurn.value != _myOnlineColor.value) {
+            return
+        }
+
         if (_selectedPowerUp.value != null) {
             activatePowerUpOnSquare(position)
             return
