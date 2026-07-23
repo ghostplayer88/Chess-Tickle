@@ -170,7 +170,7 @@ class ChessAI {
             scoredMoves.add(Pair(move, value))
         }
 
-        // Sort moves from best to worst for the current player
+        // Sort moves from best to worst for the AI (assuming Black AI)
         val sorted = if (color == PieceColor.WHITE)
             scoredMoves.sortedByDescending { it.second }
         else
@@ -178,59 +178,61 @@ class ChessAI {
 
         val bestValue = sorted.first().second
 
-        // Controlled error injection: pick a non-blundering sub-optimal move
-        // A move is "acceptable" if it's within 200 centipawns of the best move
+        // Controlled error injection based on level parameter
         if (Random.nextFloat() < errorRate) {
+            // For levels 1-2, allow a wider range of casual moves (within 350 centipawns)
+            // For levels 3-5, within 250 centipawns
+            val maxDelta = if (levelNumber <= 2) 350 else if (levelNumber <= 5) 250 else 150
             val acceptableMoves = sorted.filter { (_, value) ->
-                if (color == PieceColor.WHITE) value >= bestValue - 200
-                else value <= bestValue + 200
+                if (color == PieceColor.WHITE) value >= bestValue - maxDelta
+                else value <= bestValue + maxDelta
             }
 
-            // Objective-aware filtering for early levels (1–5):
-            // Bias away from moves that directly block pawn advance lanes (rows 5-6 for black)
-            // This makes it easier to accomplish promotion/structure objectives without making the AI passive
-            val objectiveAwareMoves = if (levelNumber <= 5 && acceptableMoves.size > 1) {
-                val filtered = acceptableMoves.filter { (move, _) ->
-                    // Avoid placing pieces on rows 5-6 (indices 5,6) which blocks White pawn advance
-                    !(move.to.row in 5..6 && move.piece.type != PieceType.PAWN)
+            val choices = if (acceptableMoves.isNotEmpty()) acceptableMoves else sorted.take(minOf(3, sorted.size))
+
+            // Level-specific objective balancing:
+            when (levelNumber) {
+                1 -> {
+                    // Level 1: Pawn Academy – avoid aggressive pawn captures to let player learn promotion!
+                    val nonPawnCaptures = choices.filter { (m, _) ->
+                        !(m.capturedPiece?.type == PieceType.PAWN && Random.nextFloat() < 0.7f)
+                    }
+                    if (nonPawnCaptures.isNotEmpty()) return@withContext nonPawnCaptures.random().first
                 }
-                if (filtered.isNotEmpty()) filtered else acceptableMoves
-            } else {
-                acceptableMoves
+                2 -> {
+                    // Level 2: Knight's Grove – avoid immediately capturing or trading Knights
+                    val nonKnightCaptures = choices.filter { (m, _) ->
+                        !(m.capturedPiece?.type == PieceType.KNIGHT && Random.nextFloat() < 0.6f)
+                    }
+                    if (nonKnightCaptures.isNotEmpty()) return@withContext nonKnightCaptures.random().first
+                }
+                3 -> {
+                    // Level 3: Bishop's Sanctuary – leave diagonals open where possible
+                    val diagonalMoves = choices.filter { (m, _) -> m.piece.type != PieceType.PAWN }
+                    if (diagonalMoves.isNotEmpty() && Random.nextFloat() < 0.5f) {
+                        return@withContext diagonalMoves.random().first
+                    }
+                }
             }
 
-            // Prefer capturing moves slightly for realism; otherwise pick randomly from acceptable
-            val captureMoves = objectiveAwareMoves.filter { it.first.capturedPiece != null }
-            return@withContext if (captureMoves.isNotEmpty() && Random.nextFloat() < 0.6f)
-                captureMoves.random().first
-            else
-                objectiveAwareMoves.random().first
+            return@withContext choices.random().first
         }
 
-        // Play best move (full strength)
+        // Play best move
         return@withContext sorted.first().first
     }
 
-    /**
-     * Returns (searchDepth, errorRate) for each campaign level.
-     * errorRate = probability of playing a controlled sub-optimal move instead of best.
-     *
-     * Level 1-2:  Very forgiving; leaves objective paths open
-     * Level 3-5:  Moderate; growing tactical awareness
-     * Level 6-8:  Challenging; strong positional play, few errors
-     * Level 9-10: Near-perfect; endgame precision at full strength
-     */
     private fun getCampaignParams(levelNumber: Int): Pair<Int, Float> = when (levelNumber) {
-        1  -> Pair(1, 0.50f)  // Pawn Academy       – depth 1, 50% error
-        2  -> Pair(1, 0.40f)  // Knight's Grove      – depth 1, 40% error
-        3  -> Pair(2, 0.30f)  // Bishop's Sanctuary  – depth 2, 30% error
-        4  -> Pair(2, 0.25f)  // Rook's Citadel      – depth 2, 25% error
-        5  -> Pair(2, 0.20f)  // Queen's Court        – depth 2, 20% error
-        6  -> Pair(3, 0.15f)  // King's Guard         – depth 3, 15% error
-        7  -> Pair(3, 0.10f)  // Cyberpunk Trial      – depth 3, 10% error
+        1  -> Pair(1, 0.65f)  // Pawn Academy       – depth 1, 65% forgiving
+        2  -> Pair(1, 0.55f)  // Knight's Grove      – depth 1, 55% forgiving
+        3  -> Pair(1, 0.45f)  // Bishop's Sanctuary  – depth 1, 45% forgiving
+        4  -> Pair(2, 0.35f)  // Rook's Citadel      – depth 2, 35% error
+        5  -> Pair(2, 0.25f)  // Queen's Court        – depth 2, 25% error
+        6  -> Pair(2, 0.18f)  // King's Guard         – depth 2, 18% error
+        7  -> Pair(3, 0.12f)  // Cyberpunk Trial      – depth 3, 12% error
         8  -> Pair(3, 0.08f)  // Tactical Master      – depth 3,  8% error
         9  -> Pair(3, 0.03f)  // Grandmaster's Lair   – depth 3,  3% error
-        10 -> Pair(3, 0.00f)  // The Chess Tickler    – depth 3,  0% error (full strength)
+        10 -> Pair(3, 0.00f)  // The Chess Tickler    – depth 3,  0% error (boss)
         else -> Pair(2, 0.20f)
     }
 
