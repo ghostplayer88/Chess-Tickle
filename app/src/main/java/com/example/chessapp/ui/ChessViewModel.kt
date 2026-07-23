@@ -340,7 +340,7 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
         _myOnlineColor.value = hostColor
         _isWaitingForGuest.value = true
 
-        onlineRepository.createGame(code, hostColor) { success ->
+        onlineRepository.createGame(code, hostColor) { success, errorMsg ->
             if (success) {
                 onlineRepository.listenForStatus(code) { status ->
                     if (status == "active" && _isWaitingForGuest.value) {
@@ -350,7 +350,7 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
                 }
             } else {
                 _isWaitingForGuest.value = false
-                _onlineErrorMessage.value = "Failed to create room. Please try again."
+                _onlineErrorMessage.value = errorMsg ?: "Failed to create room. Check Firebase Rules."
             }
         }
     }

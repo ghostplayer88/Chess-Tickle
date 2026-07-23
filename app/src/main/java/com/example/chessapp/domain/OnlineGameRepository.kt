@@ -8,7 +8,11 @@ import com.google.firebase.database.ValueEventListener
 import kotlin.random.Random
 
 class OnlineGameRepository {
-    private val db = FirebaseDatabase.getInstance("https://chess-tickle-default-rtdb.europe-west1.firebasedatabase.app")
+    private val db = try {
+        FirebaseDatabase.getInstance("https://chess-tickle-default-rtdb.europe-west1.firebasedatabase.app")
+    } catch (e: Exception) {
+        FirebaseDatabase.getInstance()
+    }
     private val gamesRef = db.getReference("games")
 
     private var moveListener: ChildEventListener? = null
@@ -20,7 +24,7 @@ class OnlineGameRepository {
         return (1..6).map { chars.random() }.joinToString("")
     }
 
-    fun createGame(gameId: String, hostColor: PieceColor, onCreated: (Boolean) -> Unit) {
+    fun createGame(gameId: String, hostColor: PieceColor, onCreated: (Boolean, String?) -> Unit) {
         currentGameId = gameId
         val gameData = mapOf(
             "status" to "waiting",
@@ -29,7 +33,12 @@ class OnlineGameRepository {
         )
 
         gamesRef.child(gameId).setValue(gameData).addOnCompleteListener { task ->
-            onCreated(task.isSuccessful)
+            if (task.isSuccessful) {
+                onCreated(true, null)
+            } else {
+                val errorMsg = task.exception?.localizedMessage ?: "Permission denied or network failure."
+                onCreated(false, errorMsg)
+            }
         }
     }
 
