@@ -35,6 +35,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import android.content.res.Configuration
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.firebase.auth.FirebaseUser
 import com.example.chessapp.domain.*
 
 @Composable
@@ -77,6 +81,19 @@ fun ChessAppScreen(viewModel: ChessViewModel = viewModel()) {
 
 @Composable
 fun MenuScreen(viewModel: ChessViewModel) {
+    val currentUser by viewModel.currentUser.collectAsState()
+
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        viewModel.authManager.handleSignInResult(task) { success, error ->
+            if (success) {
+                viewModel.triggerAchievement("first_move")
+            }
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         Image(
             painter = painterResource(id = R.drawable.chess_bg),
@@ -93,11 +110,52 @@ fun MenuScreen(viewModel: ChessViewModel) {
         ) {
             Text(
                 text = "Chess-Tickle",
-                fontSize = 50.sp,
+                fontSize = 46.sp,
                 fontWeight = FontWeight.Black,
                 color = Color(0xFFFFD700),
-                modifier = Modifier.padding(bottom = 24.dp)
+                modifier = Modifier.padding(bottom = 8.dp)
             )
+
+            // User Profile / Sign-in Status
+            if (currentUser != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(0.85f).padding(bottom = 16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E2746).copy(alpha = 0.9f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "👤 ${viewModel.authManager.getUserDisplayName()}",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier.weight(1f)
+                        )
+                        CartoonButton(
+                            text = "Sign Out",
+                            onClick = { viewModel.authManager.signOut() },
+                            backgroundColor = Color(0xFFE53935),
+                            shadowColor = Color(0xFFB71C1C),
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            } else {
+                CartoonButton(
+                    text = "🌐 SIGN IN WITH GOOGLE",
+                    onClick = {
+                        val intent = viewModel.authManager.getSignInIntent()
+                        googleSignInLauncher.launch(intent)
+                    },
+                    modifier = Modifier.fillMaxWidth(0.85f).padding(bottom = 16.dp),
+                    backgroundColor = Color(0xFF4285F4),
+                    shadowColor = Color(0xFF1A73E8),
+                    fontSize = 16.sp
+                )
+            }
 
             CartoonButton(
                 text = "🗺️ CAMPAIGN MODE",

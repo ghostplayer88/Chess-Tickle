@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import androidx.compose.ui.graphics.Color
+import com.google.firebase.auth.FirebaseUser
 
 enum class GameMode { PVP, PVAI, ONLINE }
 enum class AiDifficulty(val depth: Int) { EASY(1), MEDIUM(2), HARD(3) }
