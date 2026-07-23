@@ -71,6 +71,13 @@ class ChessGame {
 
         _board.value = _board.value.applyMove(actualMove)
 
+        // Move active effects with the piece
+        val movedEffects = activeEffects.filter { it.targetPosition == actualMove.from }
+        movedEffects.forEach { effect ->
+            activeEffects.remove(effect)
+            activeEffects.add(effect.copy(targetPosition = actualMove.to))
+        }
+
         // Handle Bomb Pawn explosion: if captured piece was a Bomb Pawn, destroy the attacker too!
         if (actualMove.capturedPiece != null) {
             val isBombPawn = activeEffects.any { it.type == PowerUpType.BOMB_PAWN && it.targetPosition == actualMove.to }
@@ -151,6 +158,10 @@ class ChessGame {
         if (piece.color != _currentTurn.value) return emptyList()
         if (_status.value !is GameStatus.Active) return emptyList()
 
+        // Frost Freeze check: frozen piece cannot move
+        val isFrozen = activeEffects.any { it.type == PowerUpType.FROST_FREEZE && it.targetPosition == position }
+        if (isFrozen) return emptyList()
+
         val pseudoLegalMoves = generatePseudoLegalMoves(_board.value, position)
         
         // Filter out moves that leave the king in check
@@ -165,6 +176,22 @@ class ChessGame {
     private fun generatePseudoLegalMoves(board: ChessBoard, pos: Position, checkCastling: Boolean = true): List<Move> {
         val piece = board.getPiece(pos) ?: return emptyList()
         val moves = mutableListOf<Move>()
+
+        // Check for Quantum Leap effect: grants Knight jump capability to any piece
+        val hasQuantumLeap = activeEffects.any { it.type == PowerUpType.QUANTUM_LEAP && it.targetPosition == pos && it.ownerColor == piece.color }
+        if (hasQuantumLeap) {
+            val knightOffsets = listOf(
+                Pair(-2, -1), Pair(-2, 1), Pair(-1, -2), Pair(-1, 2),
+                Pair(1, -2), Pair(1, 2), Pair(2, -1), Pair(2, 1)
+            )
+            for ((dRow, dCol) in knightOffsets) {
+                val target = Position(pos.row + dRow, pos.col + dCol)
+                if (target.isValid() && !board.isOccupiedByColor(target, piece.color)) {
+                    val destPiece = board.getPiece(target)
+                    moves.add(Move(pos, target, piece, destPiece))
+                }
+            }
+        }
 
         when (piece.type) {
             PieceType.PAWN -> {

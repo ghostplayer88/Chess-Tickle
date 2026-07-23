@@ -104,6 +104,8 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
     private val _selectedPowerUp = MutableStateFlow<PowerUpType?>(null)
     val selectedPowerUp: StateFlow<PowerUpType?> = _selectedPowerUp.asStateFlow()
 
+    val activeEffects: List<ActivePowerUpEffect> get() = game.activeEffects
+
     // ─── SAVE / RESUME ───────────────────────────────────────────────────────────
     private val _hasSavedGame = MutableStateFlow(GameSaveManager.hasSavedGame(application))
     val hasSavedGame: StateFlow<Boolean> = _hasSavedGame.asStateFlow()
@@ -518,6 +520,16 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun selectPowerUp(type: PowerUpType) {
+        if (type == PowerUpType.DOUBLE_STEP) {
+            val success = game.activatePowerUp(type, Position(0, 0), currentTurn.value)
+            if (success) {
+                soundManager.playPowerUpSound()
+                _selectedPowerUp.value = null
+                updateFlows()
+            }
+            return
+        }
+
         if (_selectedPowerUp.value == type) {
             _selectedPowerUp.value = null
         } else {

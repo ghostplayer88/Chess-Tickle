@@ -19,6 +19,8 @@ data class PowerUpInventory(
     val available: MutableList<PowerUpType> = mutableListOf(
         PowerUpType.DIVINE_SHIELD,
         PowerUpType.QUANTUM_LEAP,
-        PowerUpType.BOMB_PAWN
+        PowerUpType.BOMB_PAWN,
+        PowerUpType.DOUBLE_STEP,
+        PowerUpType.FROST_FREEZE
     )
 )

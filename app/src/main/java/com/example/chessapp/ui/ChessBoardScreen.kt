@@ -449,6 +449,7 @@ fun GameScreen(viewModel: ChessViewModel) {
                         hintMove = hintMove,
                         boardTheme = boardTheme,
                         userColor = userColor,
+                        activeEffects = viewModel.activeEffects,
                         onSquareClicked = { pos -> viewModel.onSquareClicked(pos) }
                     )
                 }
@@ -637,6 +638,7 @@ fun GameScreen(viewModel: ChessViewModel) {
                     hintMove = hintMove,
                     boardTheme = boardTheme,
                     userColor = userColor,
+                    activeEffects = viewModel.activeEffects,
                     onSquareClicked = { pos -> viewModel.onSquareClicked(pos) }
                 )
 
@@ -745,6 +747,7 @@ fun ChessBoardView(
     hintMove: Move? = null,
     boardTheme: BoardTheme = BoardTheme.WOOD,
     userColor: PieceColor = PieceColor.WHITE,
+    activeEffects: List<ActivePowerUpEffect> = emptyList(),
     onSquareClicked: (Position) -> Unit
 ) {
     val rows = if (userColor == PieceColor.WHITE) 0..7 else 7 downTo 0
@@ -787,6 +790,22 @@ fun ChessBoardView(
                                 textAlign = TextAlign.Center,
                                 color = if (piece.color == PieceColor.WHITE) Color.White else Color.Black
                             )
+                        }
+
+                        // Render active power-up visual badges on affected squares
+                        val activeEffect = activeEffects.find { it.targetPosition == pos }
+                        if (activeEffect != null) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(2.dp),
+                                contentAlignment = Alignment.TopEnd
+                            ) {
+                                Text(
+                                    text = activeEffect.type.icon,
+                                    fontSize = 14.sp
+                                )
+                            }
                         }
                     }
                 }
