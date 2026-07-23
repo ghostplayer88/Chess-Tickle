@@ -17,6 +17,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import com.example.chessapp.R
 import com.example.chessapp.domain.PieceColor
 
@@ -83,12 +85,26 @@ fun OnlineLobbyScreen(
                             color = Color.LightGray
                         )
                         Spacer(modifier = Modifier.height(16.dp))
+                        val clipboardManager = LocalClipboardManager.current
+                        var isCopied by remember { mutableStateOf(false) }
+
                         Text(
                             text = roomCode,
                             fontSize = 36.sp,
                             fontWeight = FontWeight.Black,
                             color = Color(0xFFFFD700),
                             letterSpacing = 4.sp
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        CartoonButton(
+                            text = if (isCopied) "✅ Copied to Clipboard!" else "📋 Copy Room Code",
+                            onClick = {
+                                clipboardManager.setText(AnnotatedString(roomCode))
+                                isCopied = true
+                            },
+                            backgroundColor = Color(0xFF00ACC1),
+                            shadowColor = Color(0xFF00838F),
+                            fontSize = 14.sp
                         )
                         Spacer(modifier = Modifier.height(20.dp))
                         CircularProgressIndicator(color = Color(0xFFFFD700))
