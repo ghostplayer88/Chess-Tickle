@@ -148,6 +148,46 @@ fun MenuScreen(viewModel: ChessViewModel) {
                 }
             }
 
+            val hasSavedGame by viewModel.hasSavedGame.collectAsState()
+
+            if (hasSavedGame) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(0.85f).padding(bottom = 4.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1B5E20).copy(alpha = 0.93f)),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "💾 Unfinished Game Found",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF69F0AE)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            CartoonButton(
+                                text = "▶ Resume",
+                                onClick = { viewModel.resumeSavedGame() },
+                                backgroundColor = Color(0xFF43A047),
+                                shadowColor = Color(0xFF1B5E20),
+                                fontSize = 14.sp
+                            )
+                            CartoonButton(
+                                text = "🗑 Discard",
+                                onClick = { viewModel.discardSave() },
+                                backgroundColor = Color(0xFFE53935),
+                                shadowColor = Color(0xFFB71C1C),
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+
             CartoonButton(
                 text = "⚡ POWER-UP CHESS MODE",
                 onClick = { viewModel.startGame(GameMode.POWERUP_PVAI, PieceColor.BLACK, AiDifficulty.MEDIUM) },

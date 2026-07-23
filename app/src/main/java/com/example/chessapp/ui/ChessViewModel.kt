@@ -104,6 +104,10 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
     private val _selectedPowerUp = MutableStateFlow<PowerUpType?>(null)
     val selectedPowerUp: StateFlow<PowerUpType?> = _selectedPowerUp.asStateFlow()
 
+    // ─── SAVE / RESUME ───────────────────────────────────────────────────────────
+    private val _hasSavedGame = MutableStateFlow(GameSaveManager.hasSavedGame(application))
+    val hasSavedGame: StateFlow<Boolean> = _hasSavedGame.asStateFlow()
+
     fun setBoardTheme(theme: BoardTheme) {
         _boardTheme.value = theme
         triggerAchievement("change_theme")
@@ -184,7 +188,61 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
 
     fun backToMenu() {
         _activeCampaignLevel.value = null
+        GameSaveManager.clearSave(getApplication())
+        _hasSavedGame.value = false
         _currentScreen.value = AppScreen.MENU
+    }
+
+    /** Restore a previously saved offline game and jump straight to it. */
+    fun resumeSavedGame() {
+        val ctx = getApplication<android.app.Application>()
+        val save = GameSaveManager.loadGame(ctx) ?: return
+
+        game = ChessGame()
+        // Restore board
+        restoreGameState(save)
+
+        _gameMode.value = GameMode.valueOf(save.gameMode)
+        _aiDifficulty.value = try { AiDifficulty.valueOf(save.aiDifficulty) } catch (e: Exception) { AiDifficulty.MEDIUM }
+        _aiColor.value = PieceColor.BLACK
+        _moveCount.value = save.moveCount
+        _isAiThinking.value = false
+        _promotionPending.value = null
+        _hintMove.value = null
+        clearSelection()
+        updateFlows(shouldSave = false) // don't overwrite save immediately
+        _currentScreen.value = AppScreen.GAME
+        checkAiTurn()
+    }
+
+    /** Discard the saved game without resuming (user tapped "New Game"). */
+    fun discardSave() {
+        GameSaveManager.clearSave(getApplication())
+        _hasSavedGame.value = false
+    }
+
+    private fun restoreGameState(save: SavedGameState) {
+        // Inject saved board state via reflection
+        val field = ChessGame::class.java.getDeclaredField("_board")
+        field.isAccessible = true
+        @Suppress("UNCHECKED_CAST")
+        (field.get(game) as kotlinx.coroutines.flow.MutableStateFlow<ChessBoard>).value = save.board
+
+        val turnField = ChessGame::class.java.getDeclaredField("_currentTurn")
+        turnField.isAccessible = true
+        @Suppress("UNCHECKED_CAST")
+        (turnField.get(game) as kotlinx.coroutines.flow.MutableStateFlow<PieceColor>).value = save.currentTurn
+
+        game.activeEffects.clear()
+        game.activeEffects.addAll(save.activeEffects)
+
+        game.whiteInventory.available.clear()
+        game.whiteInventory.available.addAll(save.whiteInventory)
+
+        game.blackInventory.available.clear()
+        game.blackInventory.available.addAll(save.blackInventory)
+
+        game.isExtraTurnActive = save.isExtraTurnActive
     }
 
     fun onSquareClicked(position: Position) {
@@ -293,12 +351,30 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun updateFlows() {
+    private fun updateFlows(shouldSave: Boolean = true) {
         _board.value = game.board.value
         _currentTurn.value = game.currentTurn.value
         _status.value = game.status.value
         _moveCount.value = game.moves.size
 
+        // Auto-save after every move (offline games only)
+        val mode = _gameMode.value
+        val isOfflineGame = mode != GameMode.ONLINE && mode != GameMode.POWERUP_ONLINE
+        if (shouldSave && isOfflineGame && _status.value is GameStatus.Active) {
+            GameSaveManager.saveGame(
+                context = getApplication(),
+                game = game,
+                gameMode = mode.name,
+                aiDifficulty = _aiDifficulty.value.name,
+                moveCount = _moveCount.value,
+                campaignLevelNumber = _activeCampaignLevel.value?.levelNumber
+            )
+            _hasSavedGame.value = true
+        } else if (_status.value !is GameStatus.Active) {
+            // Game ended — clear save so it won't be offered on next launch
+            GameSaveManager.clearSave(getApplication())
+            _hasSavedGame.value = false
+        }
         when (val currentStatus = _status.value) {
             is GameStatus.Checkmate -> {
                 soundManager.playVictorySound()
