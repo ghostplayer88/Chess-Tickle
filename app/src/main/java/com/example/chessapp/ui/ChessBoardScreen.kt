@@ -25,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.delay
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -682,26 +683,51 @@ fun PowerUpActionBar(viewModel: ChessViewModel, gameMode: GameMode) {
             colors = CardDefaults.cardColors(containerColor = Color(0xFF4A148C).copy(alpha = 0.95f)),
             shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
         ) {
-            Column(modifier = Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(
+                modifier = Modifier.padding(8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                val statusText = if (selectedPowerUp != null) {
+                    "ARMED: ${selectedPowerUp!!.icon} ${selectedPowerUp!!.displayName} — ${selectedPowerUp!!.description}"
+                } else {
+                    "⚡ Power-Ups (Tap to Arm, then tap board square)"
+                }
+
                 Text(
-                    text = "⚡ Power-Ups (Tap icon to Arm, then tap piece/square)",
+                    text = statusText,
                     fontSize = 11.sp,
-                    color = Color(0xFFFFD700),
-                    fontWeight = FontWeight.Bold
+                    color = if (selectedPowerUp != null) Color(0xFFFFD700) else Color.White,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
+
                 Row(
-                    horizontalArrangement = Arrangement.SpaceAround,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     PowerUpType.values().forEach { p ->
                         val isSelected = selectedPowerUp == p
+                        val shortLabel = when (p) {
+                            PowerUpType.DIVINE_SHIELD -> "🛡️ Shield"
+                            PowerUpType.QUANTUM_LEAP -> "🌀 Leap"
+                            PowerUpType.BOMB_PAWN -> "💣 Bomb"
+                            PowerUpType.DOUBLE_STEP -> "⏩ Double"
+                            PowerUpType.FROST_FREEZE -> "❄️ Freeze"
+                        }
+
                         CartoonButton(
-                            text = "${p.icon} ${p.displayName}",
+                            text = shortLabel,
                             onClick = { viewModel.selectPowerUp(p) },
+                            modifier = Modifier.weight(1f),
                             backgroundColor = if (isSelected) Color(0xFFFFD700) else Color(0xFF7B1FA2),
-                            shadowColor = Color(0xFF4A148C),
-                            fontSize = 10.sp
+                            shadowColor = if (isSelected) Color(0xFFFF8F00) else Color(0xFF4A148C),
+                            textColor = if (isSelected) Color(0xFF3E2723) else Color.White,
+                            fontSize = 11.sp,
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
                         )
                     }
                 }
@@ -926,7 +952,8 @@ fun CartoonButton(
     shadowColor: Color = Color(0xFFC67C00),
     textColor: Color = Color.White,
     enabled: Boolean = true,
-    fontSize: TextUnit = 18.sp
+    fontSize: TextUnit = 18.sp,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 10.dp)
 ) {
     val alpha = if (enabled) 1f else 0.5f
     val currentBg = if (enabled) backgroundColor else Color(0xFF546E7A)
@@ -940,7 +967,7 @@ fun CartoonButton(
             .padding(bottom = 4.dp)
             .background(currentBg, shape = androidx.compose.foundation.shape.RoundedCornerShape(50))
             .border(2.5.dp, Color(0xFF2A1B0E), shape = androidx.compose.foundation.shape.RoundedCornerShape(50))
-            .padding(horizontal = 18.dp, vertical = 10.dp),
+            .padding(contentPadding),
         contentAlignment = Alignment.Center
     ) {
         Text(
