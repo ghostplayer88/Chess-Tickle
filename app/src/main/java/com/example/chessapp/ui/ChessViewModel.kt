@@ -230,7 +230,14 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
             _isAiThinking.value = true
             viewModelScope.launch {
                 delay(1000)
-                val bestMove = ai.getBestMove(game, _aiDifficulty.value)
+                val campaignLevel = _activeCampaignLevel.value
+                val bestMove = if (campaignLevel != null) {
+                    // Campaign match: use dedicated level-scaled Campaign AI
+                    ai.getCampaignMove(game, campaignLevel.levelNumber)
+                } else {
+                    // Normal match: use standard difficulty AI
+                    ai.getBestMove(game, _aiDifficulty.value)
+                }
                 if (bestMove != null) {
                     executeMove(bestMove)
                 }
